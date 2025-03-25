@@ -36,8 +36,8 @@ rk35xx_gpu_vpu_tweaks()
 		chroot $SDCARD /bin/bash -c "rm -rf /etc/mpv/mpv.conf"
 		chroot $SDCARD /bin/bash -c "apt-get update" >> "${DEST}"/${LOG_SUBPATH}/install.log 2>&1
 
-		[[ ${RELEASE} == raspi ]] && chroot $SDCARD /bin/bash -c "apt remove -y chromium-browser rpi-chromium-mods libwidevinecdm0"
-		[[ "$BOARDFAMILY" == "rk3399" ]] && chroot $SDCARD /bin/bash -c "apt install -y libqt5quick5" \
+		[[ ${RELEASE} == raspi ]] && chroot $SDCARD /bin/bash -c "apt-get remove -y chromium-browser rpi-chromium-mods libwidevinecdm0"
+		[[ "$BOARDFAMILY" == "rk3399" ]] && chroot $SDCARD /bin/bash -c "apt-get install -y libqt5quick5" \
 			>> "${DEST}"/${LOG_SUBPATH}/install.log 2>&1
 
 		for package in ${packages_common_to_install[@]}; do
@@ -84,7 +84,7 @@ rk35xx_gpu_vpu_tweaks()
 			chroot $SDCARD /bin/bash -c "rm /usr/lib/aarch64-linux-gnu/dri/*.so;mv /*.so /usr/lib/aarch64-linux-gnu/dri/"
 		fi
 
-		[[ ${RELEASE} =~ jammy|focal ]] && run_on_sdcard "apt install -y cheese"
+		[[ ${RELEASE} =~ jammy|focal ]] && run_on_sdcard "apt-get install -y cheese"
 
 		apply_common_operations() {
 			chroot $SDCARD /bin/bash -c "chmod o+x /usr/lib/dbus-1.0/dbus-daemon-launch-helper"
@@ -106,5 +106,7 @@ rk35xx_gpu_vpu_tweaks()
 		fi
 
 		[[ ${RELEASE} == raspi ]] && chroot $SDCARD /bin/bash -c "sed -i '5aexport LD_PRELOAD=libdrm-cursor.so.1' /usr/bin/X"
+
+		tar -xf ${packages_dir}/common/v4l2_opencv_demo/v4l2_opencv_demo.tar.gz -C $SDCARD/opt
 	fi
 }

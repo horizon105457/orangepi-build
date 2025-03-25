@@ -195,6 +195,11 @@ prepare_board() {
 					--baudrate 1500000 --patchram /lib/firmware/ap6275p/BCM4362A2.hcd /dev/ttyS9 &
 			fi
 
+			es8388_card=$(aplay -l | grep "es8388" | cut -d ':' -f 1 | cut -d ' ' -f 2)
+			amixer -c ${es8388_card} cset name='OUT1 Switch' on >/dev/null 2>&1
+			amixer -c ${es8388_card} cset name='ALC Capture NG Switch' 1 >/dev/null 2>&1
+			amixer -c ${es8388_card} cset name='ALC Capture Function' 3 >/dev/null 2>&1
+
 			if [[ $BOARD =~ orangepi5pro|orangepicm5-tablet ]]; then
 
 				es8388_card=$(aplay -l | grep "es8388" | cut -d ':' -f 1 | cut -d ' ' -f 2)

@@ -6,7 +6,7 @@
 setenv load_addr "0x9000000"
 setenv overlay_error "false"
 # default values
-setenv rootdev "/dev/mmcblk0p1"
+# setenv rootdev "/dev/mmcblk0p1"
 setenv verbosity "1"
 setenv console "both"
 setenv bootlogo "false"
@@ -33,7 +33,9 @@ else
 fi
 
 # get PARTUUID of first partition on SD/eMMC the boot script was loaded from
-if test "${devtype}" = "mmc"; then part uuid mmc ${devnum}:1 partuuid; fi
+part uuid ${devtype} ${devnum}:1 partuuid
+
+if test -z "${rootdev}"; then rootdev=PARTUUID="${partuuid}"; fi
 
 setenv bootargs "root=${rootdev} rootwait rootfstype=${rootfstype} ${consoleargs} consoleblank=0 loglevel=${verbosity} ubootpart=${partuuid} usb-storage.quirks=${usbstoragequirks} ${extraargs} ${extraboardargs}"
 

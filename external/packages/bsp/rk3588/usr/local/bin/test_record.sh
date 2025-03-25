@@ -24,13 +24,13 @@ if [[ $type == "main" ]]; then
 	amixer -c $card cset name='Right Channel Capture Volume' 4 >/dev/null
 
 	if [[ ${BOARD} == orangepi900 ]]; then
-	amixer -c $card cset name='Left Line Mux' 1 >/dev/null
-	amixer -c $card cset name='Right Line Mux' 1 >/dev/null
-	amixer -c $card cset name='Left Mixer Left Playback Switch' 1 >/dev/null
+	amixer -c $card cset name='Left Line Mux' 'Line 2L' >/dev/null
+	amixer -c $card cset name='Right Line Mux' 'Line 2R' >/dev/null
+	amixer -c $card cset name='Left Mixer Left Playback Switch' 'on' >/dev/null
 	else
-	amixer -c $card cset name='Left PGA Mux' 1 >/dev/null
-	amixer -c $card cset name='Right PGA Mux' 1 >/dev/null
-	amixer -c $card cset name='Differential Mux' 1 >/dev/null
+	amixer -c $card cset name='Left PGA Mux' 'Line 2L' >/dev/null
+	amixer -c $card cset name='Right PGA Mux' 'Line 2R' >/dev/null
+	amixer -c $card cset name='Differential Mux' 'Line 2' >/dev/null
 	fi
 
 else
@@ -40,13 +40,13 @@ else
 	amixer -c $card cset name='Left Channel Capture Volume' 4 >/dev/null
 	amixer -c $card cset name='Right Channel Capture Volume' 4 >/dev/null
 	if [[ ${BOARD} == orangepi900 ]]; then
-	amixer -c $card cset name='Left Line Mux' 0 >/dev/null
-	amixer -c $card cset name='Right Line Mux' 0 >/dev/null
-	amixer -c $card cset name='Left Mixer Left Playback Switch' 0 >/dev/null
+	amixer -c $card cset name='Left Line Mux' 'Line 1L' >/dev/null
+	amixer -c $card cset name='Right Line Mux' 'Line 1R' >/dev/null
+	amixer -c $card cset name='Left Mixer Left Playback Switch' 'off' >/dev/null
 	else
-	amixer -c $card cset name='Left PGA Mux' 0 >/dev/null
-	amixer -c $card cset name='Right PGA Mux' 0 >/dev/null
-	amixer -c $card cset name='Differential Mux' 0 >/dev/null
+	amixer -c $card cset name='Left PGA Mux' 'Line 1L' >/dev/null
+	amixer -c $card cset name='Right PGA Mux' 'Line 1R' >/dev/null
+	amixer -c $card cset name='Differential Mux' 'Line 1' >/dev/null
 	fi
 
 fi

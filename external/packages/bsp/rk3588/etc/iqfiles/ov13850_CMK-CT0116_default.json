@@ -1,8 +1,8 @@
 {
 	"sensor_calib":	{
 		"resolution":	{
-			"width":	2112,
-			"height":	1568
+			"width":	4224,
+			"height":	3136
 		},
 		"Gain2Reg":	{
 			"GainMode":	"EXPGAIN_MODE_LINEAR",
@@ -172,8 +172,8 @@
 									"WhiteDelay":	0
 								},
 								"AecFrameRateMode":	{
-									"isFpsFix":	0,
-									"FpsValue":	15
+									"isFpsFix":	1,
+									"FpsValue":	30
 								},
 								"AecAntiFlicker":	{
 									"enable":	1,
