@@ -44,6 +44,7 @@ RUN apt-get update \
        dwarves \
        f2fs-tools \
        fakeroot \
+       fdisk \
        flex \
        gawk \
        gcc-arm-linux-gnueabihf \
@@ -118,6 +119,8 @@ RUN git config --system --add safe.directory /root/orangepi
 # Static port for NFSv3 server used for USB FEL boot
 RUN sed -i 's/\(^STATDOPTS=\).*/\1"--port 32765 --outgoing-port 32766"/' /etc/default/nfs-common \
     && sed -i 's/\(^RPCMOUNTDOPTS=\).*/\1"--port 32767"/' /etc/default/nfs-kernel-server
+
+RUN echo 'loop max_loop=128' >> /etc/modules
 
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8' TERM=screen
 WORKDIR /root/orangepi
