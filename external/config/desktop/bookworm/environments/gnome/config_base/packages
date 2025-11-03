@@ -33,6 +33,7 @@ gnome-desktop3-data
 gnome-disk-utility
 gnome-keyring
 gnome-menus
+gnome-remote-desktop
 gnome-screenshot
 gnome-session
 gnome-shell
@@ -79,6 +80,7 @@ profile-sync-daemon
 python3.11-venv
 python3-pip
 rpcbind
+smplayer
 software-properties-gtk
 synaptic
 system-config-printer
