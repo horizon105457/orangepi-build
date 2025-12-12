@@ -227,7 +227,7 @@ create_sources_list()
 	EOF
 	;;
 
-	xenial|bionic|focal|hirsute|impish|jammy|noble)
+	xenial|bionic|focal|hirsute|impish|jammy)
 	cat <<-EOF > "${basedir}"/etc/apt/sources.list
 	deb http://${UBUNTU_MIRROR} $release main restricted universe multiverse
 	#deb-src http://${UBUNTU_MIRROR} $release main restricted universe multiverse
@@ -240,6 +240,20 @@ create_sources_list()
 
 	deb http://${UBUNTU_MIRROR} ${release}-backports main restricted universe multiverse
 	#deb-src http://${UBUNTU_MIRROR} ${release}-backports main restricted universe multiverse
+	EOF
+	;;
+
+	noble)
+	distro="ubuntu"
+	# Drop deboostrap sources leftovers
+	rm -f "${basedir}/etc/apt/sources.list"
+
+	cat <<- EOF > "${basedir}/etc/apt/sources.list.d/${distro}.sources"
+	Types: deb
+	URIs: http://${UBUNTU_MIRROR}
+	Suites: ${release} ${release}-security ${release}-updates ${release}-backports
+	Components: main restricted universe multiverse
+	Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 	EOF
 	;;
 

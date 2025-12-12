@@ -5,7 +5,7 @@ release=$(lsb_release -cs)
 sudo apt update
 if [[ $release =~ focal|bionic|buster ]]; then
 	sudo apt-get -y install qt5-default qttools5-dev-tools qtbase5-doc-html qt5-assistant qt5-doc
-elif [[ $release =~ bullseye|bookworm|jammy ]]; then
+elif [[ $release =~ bullseye|bookworm|jammy|noble ]]; then
 	sudo apt-get -y install qttools5-dev-tools qtbase5-doc-html qt5-assistant qt5-doc qt5-qmake qt5-qmake-bin
 else
 	echo "Unsupported system!"
@@ -14,7 +14,7 @@ fi
 
 sudo apt-get -y install qtcreator qmlscene gdb qtdeclarative5-dev qtbase5-examples cmake
 
-if [[ $release =~ bookworm ]]; then
+if [[ $release =~ bookworm|noble ]]; then
 	sudo apt-get -y install qt6-wayland qtwayland5
 	sudo apt-get -y install libegl1-mesa-dev libgles2-mesa-dev
 fi
