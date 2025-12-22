@@ -18,3 +18,6 @@ Soc | Boards |
 
 - 中文链接：     http://www.orangepi.cn
 - English link：http://www.orangepi.org
+
+## Supported Host Systems
+- Ubuntu 22.04
