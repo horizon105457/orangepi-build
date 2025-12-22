@@ -212,7 +212,7 @@ if [[ -z $BOARD ]]; then
 	options+=("orangepi6plus"                 "Cix P1 12-core 16-64GB RAM 5GBE USB3 USB-C WiFi/BT NVMe")
 	options+=("orangepirv"                  "Starfive  JH7110 quad core 2-8GB RAM GBE USB3 NvMe WiFi/BT")
 	options+=("orangepirv2"                  "Ky X1 octa core 2-8GB RAM GBE USB3 WiFi/BT NVMe eMMC")
-	#options+=("orangepir2s"                  "Ky X1 octa core 2-8GB RAM 2.5GBE USB3 eMMC")
+	options+=("orangepir2s"                  "Ky X1 octa core 2-8GB RAM 2.5GBE USB3 eMMC")
 	#options+=("orangepir1plus"              "Rockchip  RK3328 quad core 1GB RAM 2xGBE USB2 SPI")
 	#options+=("orangepi3plus"              "Amlogic S905D3 quad core 2/4GB RAM SoC eMMC GBE USB3 SPI WiFi/BT")
 
