@@ -5,7 +5,8 @@
 set -e
 
 # 配置变量
-IMAGE_NAME="opi6plus_bios_image_for_linux_$(date +"%Y%m%d").img"
+#IMAGE_NAME="opi6plus_bios_image_for_linux_$(date +"%Y%m%d").img"
+IMAGE_NAME="opi6_bios_image_for_linux_$(date +"%Y%m%d").img"
 IMAGE_SIZE="100"  # 100MB镜像
 MOUNT_POINT="/tmp/bios_mount"
 

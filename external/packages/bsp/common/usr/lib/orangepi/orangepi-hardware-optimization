@@ -217,7 +217,7 @@ prepare_board() {
 				        --baudrate 1500000 --patchram /lib/firmware/SYN43711A0.hcd /dev/ttyS7 &
 			fi
 			;;
-		orangepi6plus)
+		orangepi6plus|orangepi6)
 			if [ ! -e /dev/dma_heap/linux,cma ]; then
 				ln -s /dev/dma_heap/reserved /dev/dma_heap/linux,cma
 			fi

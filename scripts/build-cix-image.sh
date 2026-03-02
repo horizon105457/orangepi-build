@@ -130,7 +130,7 @@ function create_cix_image()
     boot_size=$(expr $boot_size \* 1024 \* 1024)
     #echo "boot_start: ${boot_start}Mib, boot_size: ${boot_size} bytes"
 
-    cp "${SCRIPT_DIR}/debian/grub-post-silicon.cfg" "${PATH_OUT}/images/grub.cfg"
+    cp "${SCRIPT_DIR}/debian/grub-post-silicon-${BOARD}.cfg" "${PATH_OUT}/images/grub.cfg"
     local root_device_guid=$("${SCRIPT_DIR}/debian/cix_tool" --flash-tool -d "${PATH_OUT}/images/partition-table.img" | grep "PARTITION1, guid:" | awk -F ":" '{print $2}')
     sed -i "s:root=/dev/nvme0n1p2:root=PARTUUID=${root_device_guid}:g" "${PATH_OUT}/images/grub.cfg"
     sed -i "s:root=/dev/sda2:root=PARTUUID=${root_device_guid}:g" "${PATH_OUT}/images/grub.cfg"

@@ -162,7 +162,7 @@ do_expand_partition()
 			;;
 	esac
 
-	if [[ ${BOARD} == orangepi6plus ]]; then
+	if [[ ${BOARD} =~ orangepi6plus|orangepi6 ]]; then
 		new_partuuid=$(sudo blkid ${rootsource} -s PARTUUID -o value)
 		if [[ ${rootdevice} == *sd* ]]; then
 			mount ${rootdevicepath}1 /mnt/
