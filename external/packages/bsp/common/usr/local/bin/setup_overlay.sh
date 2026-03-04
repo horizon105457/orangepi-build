@@ -1,6 +1,19 @@
 #!/bin/bash
 set -e
 
+source /etc/orangepi-release
+
+if [[ "$DISTRIBUTION_CODENAME" =~ "bookworm"|"bullseye" ]]; then
+	cat <<-'EOF' > /usr/share/initramfs-tools/hooks/custom
+	cp /bin/grep "${DESTDIR}"/bin
+	cp /bin/mount "${DESTDIR}"/bin
+	cp /lib/aarch64-linux-gnu/libmount.so.1 "${DESTDIR}"/lib
+	EOF
+	chmod +x /usr/share/initramfs-tools/hooks/custom
+	export PATH=$PATH:/usr/sbin
+	update-initramfs -u > /dev/null 2>&1
+fi
+
 FLAG_FILE=/var/lib/overlay_done
 
 if [ -f $FLAG_FILE ]; then
@@ -22,7 +35,8 @@ partprobe "$DISK"
 sleep 1
 
 echo "Expand EXT4..."
-e2fsck -fy "$PART" || true
+e2fsck -f "$PART" -y || true
+sleep 1
 resize2fs "$PART"
 
 UUID=$(blkid -s UUID -o value "$PART")

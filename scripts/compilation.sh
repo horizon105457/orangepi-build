@@ -288,6 +288,7 @@ compile_uboot()
 	DIR=/usr/lib/$uboot_name
 	$(declare -f write_uboot_platform)
 	$(declare -f write_uboot_platform_mtd)
+	$(declare -f write_uboot_platform_ufs)
 	$(declare -f setup_write_uboot_platform)
 	EOF
 
@@ -455,7 +456,7 @@ CUSTOM_KERNEL_CONFIG
 	cp "$EXTER"/patch/misc/headers-debian-byteshift.patch /tmp
 
 	if [[ $KERNEL_CONFIGURE != yes ]]; then
-		if [[ $BRANCH == legacy && ! $BOARDFAMILY =~ "rockchip-rk3588"|"rockchip-rk356x" ]]; then
+		if [[ $BRANCH == legacy && ! $BOARDFAMILY =~ "rockchip-rk3588"|"rockchip-rk356x"|"sun60iw2" ]]; then
 			eval CCACHE_BASEDIR="$(pwd)" env PATH="${toolchain}:${PATH}" \
 				'make ARCH=$ARCHITECTURE CROSS_COMPILE="$CCACHE $KERNEL_COMPILER" silentoldconfig'
 		else
@@ -523,6 +524,11 @@ CUSTOM_KERNEL_CONFIG
 	#if [[ $BRANCH == legacy && $LINUXFAMILY =~ sun50iw2|sun50iw6|sun50iw9 ]]; then
 	#	make -C modules/gpu LICHEE_MOD_DIR=${SRC}/.tmp/gpu_modules_${LINUXFAMILY} LICHEE_KDIR=${kerneldir} CROSS_COMPILE=$toolchain/$KERNEL_COMPILER ARCH=$ARCHITECTURE
 	#fi
+
+	if [[ $LINUXFAMILY =~ sun60iw2 ]]; then
+		make -C bsp/modules/gpu LICHEE_TOOLCHAIN_PATH=$toolchain LICHEE_CROSS_COMPILER=$KERNEL_COMPILER LICHEE_PLATFORM=linux LICHEE_MOD_DIR=${SRC}/.tmp/gpu_modules_${LINUXFAMILY} LICHEE_KERN_DIR=${kerneldir} CROSS_COMPILE=$toolchain/$KERNEL_COMPILER ARCH=$ARCHITECTURE
+		make -C bsp/modules/gpu modules_install LICHEE_TOOLCHAIN_PATH=$toolchain LICHEE_CROSS_COMPILER=$KERNEL_COMPILER LICHEE_PLATFORM=linux LICHEE_MOD_DIR=${SRC}/.tmp/gpu_modules_${LINUXFAMILY} LICHEE_KERN_DIR=${kerneldir} CROSS_COMPILE=$toolchain/$KERNEL_COMPILER ARCH=$ARCHITECTURE
+	fi
 
 	display_alert "Creating packages"
 

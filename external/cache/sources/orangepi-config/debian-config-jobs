@@ -1583,7 +1583,7 @@ function jobs ()
 			if ! is_package_manager_running; then
 				if ! dpkg -l | grep -q "overlayroot"; then
 					debconf-apt-progress -- apt-get update
-					if [[ "$DISTROID" == "bookworm" ]]; then
+					if [[ "$DISTROID" =~ "bookworm"|"bullseye" ]]; then
 						cat <<-'EOF' > /usr/share/initramfs-tools/hooks/custom
 						cp /bin/grep "${DESTDIR}"/bin
 						cp /bin/mount "${DESTDIR}"/bin
