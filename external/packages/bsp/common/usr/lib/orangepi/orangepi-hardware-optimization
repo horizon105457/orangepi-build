@@ -459,7 +459,6 @@ prepare_board() {
 
 			;;
 		orangepi4pro)
-			[[ $DISTRIBUTION_CODENAME =~ bullseye ]] && /sbin/insmod /opt/pvrsrvkm.ko
 			echo 40 > /sys/class/gpio/export
 			echo out > /sys/class/gpio/gpio40/direction
 			echo 1 > /sys/class/gpio/gpio40/value
@@ -471,7 +470,6 @@ prepare_board() {
 			amixer -c 1 cset name='ADCR PGA Volume' 10 >/dev/null 2>&1
 			;;
 		orangepizero3w)
-			[[ $DISTRIBUTION_CODENAME =~ bullseye ]] && /sbin/insmod /opt/pvrsrvkm.ko
 			echo usb_host > /sys/devices/platform/soc@3000000/10.usbc0/otg_role
 			(while [[ ! -e /proc/bluetooth/sleep/btwrite ]]; do sleep 1; done; echo 1 > /proc/bluetooth/sleep/btwrite; \
 				/usr/bin/hciattach_opi -n -s 1500000 /dev/ttyS1 aic) &

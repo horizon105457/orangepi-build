@@ -51,7 +51,7 @@ family_tweaks()
 
 	if [[ $RELEASE == jammy && $BUILD_DESKTOP == yes && $install_firefox == yes ]]; then
 
-		firefox_name="firefox-esr_102.6.0esr+build1-0ubuntu0.22.04.1_arm64.deb"
+		firefox_name="firefox-esr_140.8.0esr+build2-0ubuntu0.22.04.1~mt1_arm64.deb"
 		firefox_url="https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu/pool/main/f/firefox-esr/"
 		firefox=${EXTER}/cache/debs/arm64/${firefox_name}
 
@@ -65,7 +65,7 @@ family_tweaks()
 
         if [[ $RELEASE == noble && $BUILD_DESKTOP == yes && $install_firefox == yes ]]; then
 
-                firefox_name="firefox-esr_115.15.0esr+build1-0ubuntu0.24.04.1~mt1_arm64.deb"
+                firefox_name="firefox-esr_140.8.0esr+build2-0ubuntu0.24.04.1~mt1_arm64.deb"
                 firefox_url="https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu/pool/main/f/firefox-esr/"
                 firefox=${EXTER}/cache/debs/arm64/${firefox_name}
 
