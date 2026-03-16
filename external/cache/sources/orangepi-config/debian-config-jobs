@@ -1588,6 +1588,7 @@ function jobs ()
 						cp /bin/grep "${DESTDIR}"/bin
 						cp /bin/mount "${DESTDIR}"/bin
 						cp /lib/aarch64-linux-gnu/libmount.so.1 "${DESTDIR}"/lib
+						cp /lib/aarch64-linux-gnu/libpcre.so.3 "${DESTDIR}"/lib 2>/dev/null || true
 						EOF
 						chmod +x /usr/share/initramfs-tools/hooks/custom
 						export PATH=$PATH:/usr/sbin

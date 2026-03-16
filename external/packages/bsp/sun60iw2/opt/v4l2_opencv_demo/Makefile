@@ -1,6 +1,31 @@
-CXX := g++
-CXXFLAGS := -Wall -O2 `pkg-config --cflags opencv4`
-LDFLAGS := `pkg-config --libs opencv4`
+# V4L2 OpenCV Demo Makefile
+# Supports local compilation and cross-compilation
+#
+# Usage:
+#   Local compilation (on target device): make
+#   Cross-compilation: make CROSS_COMPILE=aarch64-linux-gnu-
+#
+# Note: ISP library is ARM64 pre-built binary, only runs on Allwinner target devices
+
+CXX ?= g++
+ISP_DIR := ../isp6xx
+
+# Cross-compilation support
+ifdef CROSS_COMPILE
+	CXX := $(CROSS_COMPILE)g++
+endif
+
+CXXFLAGS := -Wall -O2 `pkg-config --cflags opencv4` \
+	    -I$(ISP_DIR) \
+	    -I$(ISP_DIR)/libisp/include \
+	    -I$(ISP_DIR)/libisp/include/V4l2Camera \
+	    -I$(ISP_DIR)/libisp/include/device
+
+LDFLAGS := `pkg-config --libs opencv4` \
+	   -L$(ISP_DIR) \
+	   -lAWIspApi -lisp -lisp_ini \
+	   -lpthread -ldl -lm \
+	   -Wl,-rpath,'$$ORIGIN/../isp6xx'
 
 SRC := v4l2_camera.cpp test_camera.cpp
 TARGET := cam_test

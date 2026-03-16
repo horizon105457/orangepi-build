@@ -738,7 +738,7 @@ install_distribution_specific()
 			[[ $(grep -L "VERSION=" "${SDCARD}"/etc/os-release) ]] && echo 'VERSION="11 (bookworm)"' >> "${SDCARD}"/etc/os-release
 
 			# remove security updates repository since it does not exists yet
-			sed '/security/ d' -i "${SDCARD}"/etc/apt/sources.list
+			# sed '/security/ d' -i "${SDCARD}"/etc/apt/sources.list
 
 		;;
 

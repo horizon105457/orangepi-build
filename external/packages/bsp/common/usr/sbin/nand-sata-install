@@ -34,6 +34,9 @@ case ${LINUXFAMILY} in
 	rk3328|rk3399|rockchip64|rockchip-rk356x|rockchip-rk3588|ky)
 		FIRSTSECTOR=32768
 		;;
+	sun60iw2)
+		FIRSTSECTOR=65536
+		;;
 	*)
 		FIRSTSECTOR=8192
 		;;
@@ -47,8 +50,8 @@ root_partition_device="${root_partition::-2}"
 # find targets: NAND, EMMC, SATA, SPI flash, NVMe
 [[ -b /dev/nand ]] && nandcheck=$(ls -d -1 /dev/nand* | grep -w 'nand' | awk '{print $NF}');
 emmccheck=$(ls -d -1 /dev/mmcblk* | grep -w 'mmcblk[0-9]' | grep -v "$root_partition_device");
-diskcheck=$(lsblk -o NAME,TYPE,PHY-SEC | awk '$2=="disk" && $3==512 {print $1}' | grep -E '^sd|^nvme')
-ufscheck=$(lsblk -o NAME,TYPE,PHY-SEC | awk '$2=="disk" && $3==4096 {print $1}' | grep -E '^sd|^nvme')
+diskcheck=$(for d in /sys/block/sd* /sys/block/nvme*; do [[ -e "$d" && $(realpath "$d/device") != *".ufs"* ]] && echo "$(basename "$d")"; done)
+ufscheck=$(for d in /sys/block/sd*; do [[ $(realpath $d/device) == *".ufs"* ]] && basename $d; done)
 spicheck=$(grep 'mtd' /proc/partitions | awk '{print $NF}')
 
 # define makefs and mount options
@@ -556,6 +559,7 @@ check_partitions()
 {
 	IFS=" "
 	AvailablePartitions=$(lsblk -l -o NAME,TYPE,LOG-SEC | awk '$2=="part" && $3==512 {print $1}' | grep -E '^sd|^nvme|^md')
+	disk_parts=$(for d in /sys/block/sd* /sys/block/nvme* /sys/block/md*; do [[ -e "$d" && $(realpath $d/device) != *".ufs"* ]] && lsblk -ln -o NAME /dev/$(basename $d) | tail -n +2; done)
 	if [[ -z $AvailablePartitions ]]; then
 		dialog --title "$title" --backtitle "$backtitle" --colors --msgbox \
 		"\n\Z1There are no avaliable partitions. Please create them.\Zn" 7 60
@@ -563,7 +567,7 @@ check_partitions()
 		apt-get -y -q install gdisk >/dev/null 2>&1
 		gdisk /dev/$diskcheck
 	fi
-	AvailablePartitions=$(lsblk -l -o NAME,TYPE,LOG-SEC | awk '$2=="part" && $3==512 {print $1}' | grep -E '^sd|^nvme|^md' | uniq | sed 's|^|/dev/|' | nl | xargs echo -n)
+	AvailablePartitions=$(for d in /sys/block/sd* /sys/block/nvme* /sys/block/md*; do [[ -e "$d" && $(realpath $d/device) != *".ufs"* ]] && lsblk -ln -o NAME /dev/$(basename $d) | tail -n +2; done| uniq | sed 's|^|/dev/|' | nl | xargs echo -n)
 	PartitionOptions=($AvailablePartitions)
 
 	PartitionCmd=(dialog --title 'Select destination:' --backtitle "$backtitle" --menu "\n$infos" 10 60 16)
@@ -576,7 +580,7 @@ check_partitions()
 check_ufs_partitions()
 {
 	IFS=" "
-	AvailablePartitions=$(lsblk -l -o NAME,TYPE,LOG-SEC | awk '$2=="part" && $3==4096 {print $1}' | grep -E '^sd|^md')
+	AvailablePartitions=$(for d in /sys/block/sd*; do [[ -e "$d" && $(realpath $d/device) == *".ufs"* ]] && lsblk -ln -o NAME /dev/$(basename $d) | tail -n +2; done)
 	if [[ -z $AvailablePartitions ]]; then
 		dialog --title "$title" --backtitle "$backtitle" --colors --msgbox \
 		"\n\Z1There are no avaliable partitions. Please create them.\Zn" 7 60
@@ -584,7 +588,7 @@ check_ufs_partitions()
 		apt-get -y -q install gdisk >/dev/null 2>&1
 		gdisk /dev/$diskcheck
 	fi
-	AvailablePartitions=$(lsblk -l -o NAME,TYPE,LOG-SEC | awk '$2=="part" && $3==4096 {print $1}' | grep -E '^sd|^md'| uniq | sed 's|^|/dev/|' | nl | xargs echo -n)
+	AvailablePartitions=$(for d in /sys/block/sd*; do [[ -e "$d" && $(realpath $d/device) == *".ufs"* ]] && lsblk -ln -o NAME /dev/$(basename $d) | tail -n +2; done | uniq | sed 's|^|/dev/|' | nl | xargs echo -n)
 	PartitionOptions=($AvailablePartitions)
 
 	PartitionCmd=(dialog --title 'Select destination:' --backtitle "$backtitle" --menu "\n$infos" 10 60 16)
@@ -790,12 +794,7 @@ main()
 				create_orangepi 'ufs' "$DISK_ROOT_PART"
 
 				if [[ $(type -t write_uboot_platform_ufs) == function ]]; then
-					dialog --title "$title" --backtitle "$backtitle" --yesno \
-						"Do you want to write the bootloader to UFS?\n\nIt is required if you have not done it before or if you have some non-OrangePi bootloader in UFS." 8 60
-
-					if [[ $? -eq 0 ]]; then
-						write_uboot_platform_ufs "$DIR" "${DISK_ROOT_PART%?}"
-					fi
+					write_uboot_platform_ufs "$DIR" "${DISK_ROOT_PART%?}"
 				fi
 				;;
 			9)
