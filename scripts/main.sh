@@ -464,18 +464,18 @@ if [[ ${IGNORE_UPDATES} != yes ]]; then
 		if [[ ${GITEE_SERVER} == yes ]]; then
 			fetch_from_repo "https://gitee.com/orangepi-xunlong/component_cix-$BRANCH.git" "${EXTER}/cache/sources/component_cix-$BRANCH" "branch:main"
 
-			if [[ ! -f "${EXTER}/cache/sources/component_cix-$BRANCH/debs/cix-npu-onnxruntime_1.1.0_arm64.deb" ]]; then
+			if [[ ! -f "${EXTER}/cache/sources/component_cix-$BRANCH/debs/cix-npu-onnxruntime_1.2.0_arm64.deb" ]]; then
 				display_alert "Downloading deb" "cix-npu-onnxruntime" "info"
 				wget -c -t 5 -P "${EXTER}/cache/sources/component_cix-$BRANCH/debs/" \
-				http://www.iplaystore.cn/upload/debs/cix-npu-onnxruntime_1.1.0_arm64.deb
+				http://www.iplaystore.cn/upload/debs/cix-npu-onnxruntime_1.2.0_arm64.deb
 			fi
 		else
 			fetch_from_repo "https://github.com/orangepi-xunlong/component_cix-$BRANCH.git" "${EXTER}/cache/sources/component_cix-$BRANCH" "branch:main"
 
-			if [[ ! -f "${EXTER}/cache/sources/component_cix-$BRANCH/debs/cix-npu-onnxruntime_1.1.0_arm64.deb" ]]; then
+			if [[ ! -f "${EXTER}/cache/sources/component_cix-$BRANCH/debs/cix-npu-onnxruntime_1.2.0_arm64.deb" ]]; then
 				display_alert "Downloading deb" "cix-npu-onnxruntime" "info"
 				wget -c -t 5 -P "${EXTER}/cache/sources/component_cix-$BRANCH/debs/" \
-				https://github.com/orangepi-xunlong/component_cix-${BRANCH}/releases/download/v1.1.0/cix-npu-onnxruntime_1.1.0_arm64.deb
+				https://github.com/orangepi-xunlong/component_cix-${BRANCH}/releases/download/v1.2.0/cix-npu-onnxruntime_1.2.0_arm64.deb
 			fi
 		fi
 
