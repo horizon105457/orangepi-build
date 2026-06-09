@@ -242,8 +242,12 @@ create_rootfs_cache()
 
 		mount_chroot "$SDCARD"
 
+		mkdir -p $SDCARD/etc/apt/apt.conf.d/
+		echo "Acquire::Retries \"5\";" > $SDCARD/etc/apt/apt.conf.d/99-retries
+		echo "Acquire::http::Timeout \"30\";" >> $SDCARD/etc/apt/apt.conf.d/99-retries
+		echo "Acquire::https::Timeout \"30\";" >> $SDCARD/etc/apt/apt.conf.d/99-retries
+		echo "Acquire::ftp::Timeout \"30\";" >> $SDCARD/etc/apt/apt.conf.d/99-retries
 		if [[ ${RELEASE} == "sid" ]]; then
-			mkdir -p $SDCARD/etc/apt/apt.conf.d/
 		        echo "Acquire::Check-Valid-Until no;" > $SDCARD/etc/apt/apt.conf.d/99-no-check-valid-until
 			wget -qnc -P ${EXTER}/cache/debs/ https://snapshot.debian.org/archive/debian-ports/20220616T194833Z/pool-riscv64/main/i/icu/libicu71_71.1-3_riscv64.deb
 		        cp -v ${EXTER}/cache/debs/libicu71_71.1-3_riscv64.deb $SDCARD/

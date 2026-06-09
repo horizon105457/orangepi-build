@@ -1973,8 +1973,8 @@ install_docker() {
 		mirror_url=https://mirrors.aliyun.com
 	#fi
 
-	chroot "${SDCARD}" /bin/bash -c "curl -fsSL ${mirror_url}/docker-ce/linux/${distributor_id}/gpg | apt-key add -"
-	echo "deb [arch=${ARCH}] ${mirror_url}/docker-ce/linux/${distributor_id} ${RELEASE} stable" > "${SDCARD}"/etc/apt/sources.list.d/docker.list
+	chroot "${SDCARD}" /bin/bash -c "curl -fsSL ${mirror_url}/docker-ce/linux/${distributor_id}/gpg | gpg --dearmor -o /etc/apt/trusted.gpg.d/docker.gpg"
+	echo "deb [arch=${ARCH} signed-by=/etc/apt/trusted.gpg.d/docker.gpg] ${mirror_url}/docker-ce/linux/${distributor_id} ${RELEASE} stable" > "${SDCARD}"/etc/apt/sources.list.d/docker.list
 
 	chroot "${SDCARD}" /bin/bash -c "apt-get update"
 	chroot "${SDCARD}" /bin/bash -c "apt-get install -y -qq docker-ce docker-ce-cli containerd.io"
