@@ -1,0 +1,115 @@
+#!/bin/bash
+
+set -euo pipefail
+
+BOOT_PROFILE_CONFIG="/etc/default/opibot-boot-profile"
+LEGACY_CONFIG_FILE="/etc/default/opibot-performance-mode"
+ENV_FILE="/boot/orangepiEnv.txt"
+
+# This script is the authority for rendering boot isolation parameters into
+# orangepiEnv.txt. Other paths may keep a compatibility fallback, but new boot
+# profile behavior should be defined here first.
+
+BOOT_PROFILE="rt-control"
+CONTROL_CPUS="6,7"
+SYSTEM_CPUS="0-5"
+
+load_config() {
+	if [[ -f "${LEGACY_CONFIG_FILE}" ]]; then
+		# shellcheck disable=SC1090
+		source "${LEGACY_CONFIG_FILE}"
+		CONTROL_CPUS="${RT_CPUS:-${CONTROL_CPUS}}"
+		SYSTEM_CPUS="${BG_CPUS:-${SYSTEM_CPUS}}"
+		case "${BOOT_PROFILE:-}" in
+			low-power)
+				BOOT_PROFILE="balanced"
+				;;
+			rt-high-performance)
+				BOOT_PROFILE="rt-control"
+				;;
+		esac
+	fi
+
+	if [[ -f "${BOOT_PROFILE_CONFIG}" ]]; then
+		# shellcheck disable=SC1090
+		source "${BOOT_PROFILE_CONFIG}"
+	fi
+}
+
+render_extraargs() {
+	case "${BOOT_PROFILE}" in
+		rt-control)
+			printf 'nohz_full=%s rcu_nocbs=%s isolcpus=managed,domain,%s irqaffinity=%s' \
+				"${CONTROL_CPUS}" "${CONTROL_CPUS}" "${CONTROL_CPUS}" "${SYSTEM_CPUS}"
+			;;
+		balanced)
+			printf ''
+			;;
+		*)
+			echo "Unknown BOOT_PROFILE: ${BOOT_PROFILE}" >&2
+			exit 1
+			;;
+	esac
+}
+
+current_extraargs() {
+	if [[ -f "${ENV_FILE}" ]]; then
+		sed -n 's/^extraargs=//p' "${ENV_FILE}" | head -n1
+	fi
+}
+
+sanitized_extraargs() {
+	printf '%s' "$1" | sed -E 's/(^| )nohz_full=[^ ]+//g; s/(^| )rcu_nocbs=[^ ]+//g; s/(^| )isolcpus=[^ ]+//g; s/(^| )irqaffinity=[^ ]+//g; s/[[:space:]]+/ /g; s/^ //; s/ $//'
+}
+
+apply_profile() {
+	local rendered existing sanitized newline
+	rendered="$(render_extraargs)"
+	existing="$(current_extraargs)"
+	sanitized="$(sanitized_extraargs "${existing}")"
+	newline="${sanitized} ${rendered}"
+	newline="$(printf '%s' "${newline}" | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')"
+
+	if [[ -f "${ENV_FILE}" ]]; then
+		if grep -q '^extraargs=' "${ENV_FILE}"; then
+			sed -i "s|^extraargs=.*|extraargs=${newline}|" "${ENV_FILE}"
+		else
+			echo "extraargs=${newline}" >> "${ENV_FILE}"
+		fi
+	else
+		echo "extraargs=${newline}" > "${ENV_FILE}"
+	fi
+}
+
+usage() {
+	cat <<'EOF'
+Usage:
+  opibot-boot-profile-sync render
+  opibot-boot-profile-sync apply
+  opibot-boot-profile-sync diff
+EOF
+}
+
+main() {
+	local command="${1:-render}"
+	load_config
+	case "${command}" in
+		render)
+			render_extraargs
+			printf '\n'
+			;;
+		apply)
+			apply_profile
+			;;
+		diff)
+			printf 'current=%s\n' "$(current_extraargs)"
+			printf 'rendered=%s\n' "$(render_extraargs)"
+			;;
+		*)
+			usage
+			exit 1
+			;;
+	esac
+}
+
+main "$@"

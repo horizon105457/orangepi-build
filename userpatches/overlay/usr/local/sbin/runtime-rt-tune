@@ -1,0 +1,166 @@
+#!/bin/bash
+# Runtime tuning for RT cores, IRQ, NIC queues, and power settings
+# Usage:
+#   sudo runtime-rt-tune
+# Optional env:
+#   RT_CPUS="6,7"          # RT cores
+#   BG_CPUS="0-5"          # Non-RT cores
+#   NIC_DEV="eth0"         # NIC name
+#   USE_ETF=1               # Attach ETF on high-priority queue
+#   USE_CBS=0               # Attach CBS on high-priority queue
+#   TC_DELTA_NS=200000      # ETF delta (ns)
+#   CBS_PARAMS="idleslope 100000 sendslope -900000 hicredit 6 locredit -6"
+
+set -euo pipefail
+
+RT_CPUS=${RT_CPUS:-"6,7"}
+BG_CPUS=${BG_CPUS:-"0-5"}
+NIC_DEV=${NIC_DEV:-"eth0"}
+USE_ETF=${USE_ETF:-1}
+USE_CBS=${USE_CBS:-0}
+TC_DELTA_NS=${TC_DELTA_NS:-200000}
+CBS_PARAMS=${CBS_PARAMS:-"idleslope 100000 sendslope -900000 hicredit 6 locredit -6"}
+IRQ_LAYOUT_CONFIG=${IRQ_LAYOUT_CONFIG:-"/etc/default/opibot-irq-layout"}
+
+CONTROL_IRQ_PATTERNS=${CONTROL_IRQ_PATTERNS:-"can fdcan pwm imu_sync"}
+NIC_CONTROL_DEVICES=${NIC_CONTROL_DEVICES:-""}
+
+log() { echo "[rt-tune] $*"; }
+
+load_irq_layout() {
+	if [[ -f "$IRQ_LAYOUT_CONFIG" ]]; then
+		# shellcheck disable=SC1090
+		source "$IRQ_LAYOUT_CONFIG"
+		RT_CPUS=${CONTROL_IRQ_CPUS:-$RT_CPUS}
+	fi
+}
+
+device_is_control_path() {
+	local device="$1"
+	local entry
+	for entry in $NIC_CONTROL_DEVICES; do
+		[[ "$entry" == "$device" ]] && return 0
+	done
+	return 1
+}
+
+cpulist_to_mask() {
+	local list="$1"
+	python3 -c "
+import sys
+mask = 0
+for item in '$list'.split(','):
+		item = item.strip()
+		if '-' in item:
+				start, end = map(int, item.split('-'))
+				for cpu in range(start, end + 1):
+						mask |= (1 << cpu)
+		elif item.isdigit():
+				mask |= (1 << int(item))
+		else:
+				print(f'WARN: unexpected token {item}', file=sys.stderr)
+print(f'{mask:x}')
+"
+}
+
+expand_cpulist() {
+	local list="$1"
+	python3 -c "
+import sys
+cpus = []
+for item in '$list'.split(','):
+	item = item.strip()
+	if not item:
+		continue
+	if '-' in item:
+		start, end = map(int, item.split('-', 1))
+		cpus.extend(range(start, end + 1))
+	elif item.isdigit():
+		cpus.append(int(item))
+	else:
+		print(f'WARN: unexpected token {item}', file=sys.stderr)
+print(' '.join(str(cpu) for cpu in cpus))
+"
+}
+
+require_root() { if [[ $EUID -ne 0 ]]; then echo "Run as root"; exit 1; fi }
+require_root
+load_irq_layout
+
+log "Stopping irqbalance"
+systemctl stop irqbalance || true
+systemctl disable irqbalance || true
+
+log "Setting governors: RT->$RT_CPUS performance; BG->$BG_CPUS schedutil"
+which cpupower >/dev/null 2>&1 && {
+	cpupower -c "$RT_CPUS" frequency-set -g performance || true
+	cpupower -c "$BG_CPUS" frequency-set -g schedutil || true
+}
+
+for cpu in $(expand_cpulist "$RT_CPUS"); do
+	for s in /sys/devices/system/cpu/cpu$cpu/cpuidle/state*/disable; do
+		[[ -e "$s" ]] && echo 1 > "$s" || true
+	done
+done
+
+if device_is_control_path "$NIC_DEV"; then
+	log "Config NIC offloads, queues, and qdisc for control-path device $NIC_DEV"
+	which ethtool >/dev/null 2>&1 && {
+		ethtool -K "$NIC_DEV" gro off lro off tso off gso off || true
+		ethtool -C "$NIC_DEV" rx-usecs 0 tx-usecs 0 || true
+	}
+
+	mask_hex=$(cpulist_to_mask "$RT_CPUS")
+	for q in /sys/class/net/"$NIC_DEV"/queues/tx-*/xps_cpus; do
+		echo "$mask_hex" > "$q" || true
+	done
+	for q in /sys/class/net/"$NIC_DEV"/queues/rx-*/rps_cpus; do
+		echo "$mask_hex" > "$q" || true
+	done
+
+	log "Setup mqprio root qdisc for control-path device $NIC_DEV"
+	which tc >/dev/null 2>&1 && {
+		tc qdisc replace dev "$NIC_DEV" root mqprio num_tc 2 map 0 1 queues 1@0 1@1 hw 1 || true
+		if [[ "$USE_ETF" == "1" ]]; then
+			log "Attach ETF on TC0"
+			tc qdisc replace dev "$NIC_DEV" parent 1:1 etf clockid SOREALTIME delta "$TC_DELTA_NS" || true
+		fi
+		if [[ "$USE_CBS" == "1" ]]; then
+			log "Attach CBS on TC0"
+			tc qdisc replace dev "$NIC_DEV" parent 1:1 cbs $CBS_PARAMS || true
+		fi
+	}
+else
+	log "NIC $NIC_DEV is not marked as a control-path device; skipping RT NIC queue binding"
+fi
+
+log "Bind only control-path IRQs to RT CPUs"
+aff_mask=$(cpulist_to_mask "$RT_CPUS")
+while read -r irq line; do
+	[[ -z "$irq" ]] && continue
+	echo "$aff_mask" > /proc/irq/"$irq"/smp_affinity || true
+	log "IRQ $irq bound to mask $aff_mask"
+done < <(awk -v patterns="$CONTROL_IRQ_PATTERNS" '
+BEGIN {
+	split(patterns, raw, " ")
+	count = 0
+	for (index in raw) {
+		if (raw[index] != "") {
+			pats[++count] = raw[index]
+		}
+	}
+}
+{
+	matched = 0
+	for (index = 1; index <= count; index++) {
+		if ($0 ~ pats[index]) {
+			matched = 1
+			break
+		}
+	}
+	if (matched) {
+		print $1 " " $NF
+	}
+}' /proc/interrupts | sed 's/://')
+
+log "Runtime RT tuning done."

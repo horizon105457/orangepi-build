@@ -1,0 +1,21 @@
+[Unit]
+Description=Runtime RT kernel tuning (CPU isolation, NIC queues, IRQ binding)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/sbin/runtime-rt-tune
+
+[Service]
+Type=oneshot
+Environment="RT_CPUS=6,7"
+Environment="BG_CPUS=0-5"
+Environment="NIC_DEV=eth0"
+Environment="USE_ETF=1"
+Environment="USE_CBS=0"
+Environment="TC_DELTA_NS=200000"
+ExecStart=/usr/local/sbin/runtime-rt-tune
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
