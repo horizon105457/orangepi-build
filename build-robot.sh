@@ -31,5 +31,7 @@ echo "  日志: ${LOG}"
 echo "=============================================="
 
 cd "${SELF_DIR}"
-# tee 以调用用户运行（日志归用户），sudo 仅作用于 build.sh
-exec sudo ./build.sh "${CONFIG}" "BUILD_OPT=${OPT}" 2>&1 | tee "${LOG}"
+# Allocate a PTY for build.sh so pv/apt and the official Armbian output path
+# retain their normal terminal behavior while tee records the same stream.
+BUILD_COMMAND="$(printf '%q ' sudo ./build.sh "${CONFIG}" "BUILD_OPT=${OPT}")"
+exec script -qefc "${BUILD_COMMAND% }" /dev/null | tee "${LOG}"
