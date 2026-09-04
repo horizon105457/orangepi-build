@@ -373,6 +373,25 @@ rk3588_gpu_vpu_tweaks()
 		dpkg_install_deb_chroot "$EXTER/cache/sources/rk3588_packages_${RELEASE}/chromium-x11/chromium-browser_110.0.5481.4-debian11~bullseye~rkmpp20230130+1_arm64.deb"
 		cp $EXTER/cache/sources/rk3588_packages_${RELEASE}/chromium-x11/default $SDCARD/etc/chromium-browser/
 
+		# Keep compatibility with RKNN demos that still link against libjpeg.so.62.
+		# This preserves the current DRM/render path and only patches user-space ABI gap.
+		local jpeg_compat_candidates=(
+			"$EXTER/cache/sources/rk3588_packages_${RELEASE}/chromium-x11/libjpeg.so.62"
+			"$EXTER/cache/sources/rk3588_packages_${RELEASE}/chromium/libjpeg.so.62"
+			"$EXTER/cache/sources/rk3588_packages_jammy/chromium/libjpeg.so.62"
+		)
+		local jpeg_compat_found=""
+		for jpeg_compat_found in "${jpeg_compat_candidates[@]}"; do
+			if [[ -r "${jpeg_compat_found}" ]]; then
+				cp -f "${jpeg_compat_found}" "$SDCARD/usr/lib/aarch64-linux-gnu/libjpeg.so.62"
+				echo "[rk3588-gpu-vpu] Installed libjpeg.so.62 compatibility from ${jpeg_compat_found}"
+				break
+			fi
+		done
+		if [[ ! -r "$SDCARD/usr/lib/aarch64-linux-gnu/libjpeg.so.62" ]]; then
+			echo "[rk3588-gpu-vpu:WARN] libjpeg.so.62 compatibility not found in rk3588 package cache"
+		fi
+
 		chroot $SDCARD /bin/bash -c "sed -i '5aexport LD_PRELOAD=libdrm-cursor.so.1' /usr/bin/X"
 
 		## The chromium using fixed pathes for libv4l2.so

@@ -15,6 +15,11 @@
 *.img
 *.tar.gz
 *.patch
+*.pdf
+
+.vscode/browse.vc.db
+.vscode/browse.vc.db-shm
+.vscode/browse.vc.db-wal
 
 b.sh
 .tmp
@@ -22,7 +27,61 @@ kernel
 output
 u-boot
 toolchains
-userpatches
+
+# Keep userpatches private by default, but allow selected reproducible files
+# to be versioned. Sensitive files such as credentials, NetworkManager
+# connections and SSH material remain ignored.
+userpatches/*
+!userpatches/customize-image.sh
+!userpatches/overlay/
+userpatches/overlay/*
+!userpatches/overlay/etc/
+!userpatches/overlay/usr/
+userpatches/overlay/etc/*
+!userpatches/overlay/etc/default/
+!userpatches/overlay/etc/sysctl.d/
+!userpatches/overlay/etc/systemd/
+userpatches/overlay/etc/default/*
+!userpatches/overlay/etc/default/opibot-boot-profile
+!userpatches/overlay/etc/default/opibot-runtime-mode
+!userpatches/overlay/etc/default/opibot-irq-layout
+!userpatches/overlay/etc/default/opibot-service-layout
+!userpatches/overlay/etc/default/opibot-performance-mode
+userpatches/overlay/etc/sysctl.d/*
+!userpatches/overlay/etc/sysctl.d/99-rt-kernel-tuning.conf
+userpatches/overlay/etc/systemd/*
+!userpatches/overlay/etc/systemd/system/
+userpatches/overlay/etc/systemd/system/*
+!userpatches/overlay/etc/systemd/system/runtime-rt-tune.service
+!userpatches/overlay/etc/systemd/system/opibot-performance-mode.service
+!userpatches/overlay/etc/systemd/system/opibot-performance-autoswitch.service
+!userpatches/overlay/etc/systemd/system/opibot-ros2-high-performance.service
+!userpatches/overlay/etc/systemd/system/opibot-ros2.target
+!userpatches/overlay/etc/systemd/system/opibot-runtime-mode.service
+!userpatches/overlay/etc/systemd/system/opibot-runtime-autoswitch.service
+!userpatches/overlay/etc/systemd/system/opibot-irq-layout.service
+!userpatches/overlay/etc/systemd/system/opibot-control-prepare.service
+!userpatches/overlay/etc/systemd/system/opibot-perception-prepare.service
+!userpatches/overlay/etc/systemd/system/opibot-base.target
+!userpatches/overlay/etc/systemd/system/opibot-control.target
+!userpatches/overlay/etc/systemd/system/opibot-perception.target
+!userpatches/overlay/etc/systemd/system/opibot-mission.target
+userpatches/overlay/usr/*
+!userpatches/overlay/usr/local/
+userpatches/overlay/usr/local/*
+!userpatches/overlay/usr/local/share/
+!userpatches/overlay/usr/local/sbin/
+userpatches/overlay/usr/local/share/*
+!userpatches/overlay/usr/local/share/opibot/
+userpatches/overlay/usr/local/share/opibot/*
+!userpatches/overlay/usr/local/share/opibot/runtime-deployment-guide.md
+userpatches/overlay/usr/local/sbin/*
+!userpatches/overlay/usr/local/sbin/runtime-rt-tune
+!userpatches/overlay/usr/local/sbin/opibot-performance-mode
+!userpatches/overlay/usr/local/sbin/opibot-runtime-mode
+!userpatches/overlay/usr/local/sbin/opibot-irq-layout
+!userpatches/overlay/usr/local/sbin/opibot-boot-profile-sync
+
 
 mkimage.sh
 
@@ -67,4 +126,20 @@ external/packages/blobs/**/log/
 scripts/wget-log*
 log/
 userpatches/overlay/etc/NetworkManager/
+
+# Local tool configs
+.serial_mcp/
+.vscode/
+
+# 大体积可选载荷（deb 不入库，构建机本地放置）
 userpatches/overlay/packages/nomachine/
+
+# 工程脚手架：构建缓存 deb / 日志（不入库，构建机本地）
+external/cache/debs/
+external/packages/blobs/**/log/
+
+# 构建期 wget 下载日志（临时产物）
+scripts/wget-log*
+
+# 构建日志（build-robot.sh 重定向，仓库级不入库）
+log/

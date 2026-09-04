@@ -179,7 +179,16 @@ PRE_CUSTOMIZE_IMAGE
 	# util-linux >= 2.27 required
 	mount -o bind,ro "$USERPATCHES_PATH"/overlay "${SDCARD}"/tmp/overlay
 	display_alert "Calling image customization script" "customize-image.sh" "info"
-	chroot "${SDCARD}" /bin/bash -c "/tmp/customize-image.sh $RELEASE $LINUXFAMILY $BOARD $BUILD_DESKTOP $ARCH"
+	chroot "${SDCARD}" /usr/bin/env \
+		BUILD_RT_IMAGE="${build_rt_image:-no}" \
+		OVERLAY_WHITELIST="${OVERLAY_WHITELIST:-}" \
+		OVERLAY_BACKUP="${OVERLAY_BACKUP:-1}" \
+		OVERLAY_DRYRUN="${OVERLAY_DRYRUN:-0}" \
+		INSTALL_ROS2_SYSTEM="${INSTALL_ROS2_SYSTEM:-no}" \
+		INSTALL_OPENCV_SYSTEM="${INSTALL_OPENCV_SYSTEM:-no}" \
+		RKNN_RUNTIME_URL="${RKNN_RUNTIME_URL:-}" \
+		LIBMALI_URL="${LIBMALI_URL:-}" \
+		/tmp/customize-image.sh "$RELEASE" "$LINUXFAMILY" "$BOARD" "$BUILD_DESKTOP" "${OVERLAY_MERGE:-none}" "$ARCH"
 	CUSTOMIZE_IMAGE_RC=$?
 	umount -i "${SDCARD}"/tmp/overlay >/dev/null 2>&1
 	mountpoint -q "${SDCARD}"/tmp/overlay || rm -r "${SDCARD}"/tmp/overlay

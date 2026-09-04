@@ -97,7 +97,7 @@ prepare_board() {
 		rockpro64|renegade-elite|pinebook-pro|station-p1)
 			BOARDFAMILY=rk3399
 			;;
-		orangepi5|orangepicm5|orangepicm5-tablet|orangepi5b|orangepi5plus|orangepiaimax|orangepi5pro|orangepi5max|orangepi5ultra|orangepitab|orangepi900)
+		orangepi5|orangepicm5|orangepicm5-tablet|orangepicm5-cc|orangepi5b|orangepi5plus|orangepiaimax|orangepi5pro|orangepi5max|orangepi5ultra|orangepitab|orangepi900)
 			[[ $BOARD =~ orangepi5|orangepi5b ]] && echo host > /sys/kernel/debug/usb/fc000000.usb/mode
 			if [[ $BOARD =~ orangepicm5 ]]; then
 				while true; do

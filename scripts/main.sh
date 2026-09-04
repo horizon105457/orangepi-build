@@ -201,6 +201,7 @@ if [[ -z $BOARD ]]; then
 	options+=("orangepi5"                 "Rockchip  RK3588S octa core 4-16GB RAM GBE USB3 USB-C NVMe")
 	options+=("orangepicm5"                 "Rockchip  RK3588S octa core 4-16GB RAM GBE USB3 USB-C")
 	options+=("orangepicm5-tablet"           "Rockchip  RK3588S octa core 4-16GB RAM USB3 USB-C WiFi/BT")
+	options+=("orangepicm5-cc"               "Rockchip  RK3588S octa core 4-16GB RAM USB3 USB-C (CM5-CC)")
 	options+=("orangepi5b"                 "Rockchip  RK3588S octa core 4-16GB RAM GBE USB3 USB-C WiFi/BT eMMC")
 	#options+=("orangepitab"                 "Rockchip  RK3588S octa core 4-16GB RAM USB-C WiFi/BT NVMe")
 	#options+=("orangepi900"                 "Rockchip  RK3588 octa core 4-16GB RAM 2.5GBE USB3 USB-C WiFi/BT NVMe")
@@ -430,6 +431,7 @@ BSP_DESKTOP_PACKAGE_FULLNAME="${BSP_DESKTOP_PACKAGE_NAME}_${REVISION}_${ARCH}"
 
 CHOSEN_UBOOT=linux-u-boot-${BRANCH}-${BOARD}
 CHOSEN_KERNEL=linux-image-${BRANCH}-${LINUXFAMILY}
+[[ $build_rt_image == yes ]] && CHOSEN_KERNEL=linux-image-${BRANCH}-${LINUXFAMILY}-rt
 CHOSEN_ROOTFS=${BSP_CLI_PACKAGE_NAME}
 CHOSEN_DESKTOP=orangepi-${RELEASE}-desktop-${DESKTOP_ENVIRONMENT}
 CHOSEN_KSRC=linux-source-${BRANCH}-${LINUXFAMILY}
@@ -481,7 +483,15 @@ if [[ ${IGNORE_UPDATES} != yes ]]; then
 
 	fi
 
-	[[ $BUILD_OPT =~ kernel|image ]] && fetch_from_repo "$KERNELSOURCE" "$KERNELDIR" "$KERNELBRANCH" "yes"
+	# Prefer local kernel repository in parent directory over remote fetch
+	local kernel_source="${KERNELSOURCE}"
+	local local_kernel_repo="$(dirname "${SRC}")/linux-orangepi-rt"
+	if [[ $BUILD_OPT =~ kernel|image && -d "${local_kernel_repo}/.git" ]]; then
+		display_alert "Using local kernel repository" "${local_kernel_repo}" "info"
+		kernel_source="${local_kernel_repo}"
+	fi
+
+	[[ $BUILD_OPT =~ kernel|image ]] && fetch_from_repo "$kernel_source" "$KERNELDIR" "$KERNELBRANCH" "yes"
 
 	if [[ -n ${ATFSOURCE} ]]; then
 
