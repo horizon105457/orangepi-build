@@ -37,7 +37,8 @@ cd "${SELF_DIR}"
 # build.sh/pv 使用回车和 ANSI 控制码刷新进度。直接 tee 会把这些控制码
 # 同时写入日志，终端复制或日志查看器会出现阶梯式缩进和乱码。
 plain_output() {
-	sed -u -e $'s/\033\\[[0-?]*[ -/]*[@-~]//g' -e 's/\r/\n/g'
+	# Match CSI color/cursor sequences without locale-sensitive character ranges.
+	sed -u -e $'s|\033\\[[0-9;?]*[A-Za-z]||g' -e 's/\r/\n/g'
 }
 
 if [[ ${BUILD_ROBOT_RAW_OUTPUT:-no} == yes ]]; then
