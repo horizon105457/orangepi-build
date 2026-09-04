@@ -302,7 +302,7 @@ PRE_INSTALL_KERNEL_DEBS
 	# install kernel
 	[[ -n $KERNELSOURCE ]] && {
 		if [[ "${REPOSITORY_INSTALL}" != *kernel* ]]; then
-			VER=$(dpkg --info "${DEB_STORAGE}/${CHOSEN_KERNEL}_${REVISION}_${ARCH}.deb" | awk -F"-" '/Source:/{print $2}')
+			VER=$(dpkg --info "${DEB_STORAGE}/${CHOSEN_KERNEL}_${REVISION}_${ARCH}.deb" | sed -n '/^ Description:/s/.*version //p')
 
 			install_deb_chroot "${DEB_STORAGE}/${CHOSEN_KERNEL}_${REVISION}_${ARCH}.deb"
 			if [[ -f ${DEB_STORAGE}/${CHOSEN_KERNEL/image/dtb}_${REVISION}_${ARCH}.deb ]]; then
@@ -947,7 +947,7 @@ install_opi_specific()
 	install_deb_chroot "${DEB_STORAGE}/u-boot/${CHOSEN_UBOOT}_${REVISION}_${ARCH}.deb"
 
 	# install kernel
-	VER=$(dpkg --info "${DEB_STORAGE}/${CHOSEN_KERNEL}_${REVISION}_${ARCH}.deb" | awk -F"-" '/Source:/{print $2}')
+	VER=$(dpkg --info "${DEB_STORAGE}/${CHOSEN_KERNEL}_${REVISION}_${ARCH}.deb" | sed -n '/^ Description:/s/.*version //p')
 	install_deb_chroot "${DEB_STORAGE}/${CHOSEN_KERNEL}_${REVISION}_${ARCH}.deb"
 	if [[ -f ${DEB_STORAGE}/${CHOSEN_KERNEL/image/dtb}_${REVISION}_${ARCH}.deb ]]; then
 		install_deb_chroot "${DEB_STORAGE}/${CHOSEN_KERNEL/image/dtb}_${REVISION}_${ARCH}.deb"

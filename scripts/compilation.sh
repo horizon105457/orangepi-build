@@ -430,6 +430,10 @@ compile_kernel()
 
 	display_alert "Compiler version" "${KERNEL_COMPILER}gcc $(eval env PATH="${toolchain}:${PATH}" "${KERNEL_COMPILER}gcc" -dumpversion)" "info"
 
+	# set LOCALVERSION for kernel and deb package naming
+	local kernel_localversion="-${LINUXFAMILY}"
+	[[ $build_rt_image == yes ]] && kernel_localversion="-${LINUXFAMILY}-rt"
+
 	# copy kernel config
 	if [[ $KERNEL_KEEP_CONFIG == yes && -f "${DEST}"/config/$LINUXCONFIG.config ]]; then
 		display_alert "Using previous kernel config" "${DEST}/config/$LINUXCONFIG.config" "info"
@@ -495,7 +499,7 @@ CUSTOM_KERNEL_CONFIG
 		'make $CTHREADS ARCH=$ARCHITECTURE \
 		CROSS_COMPILE="$CCACHE $KERNEL_COMPILER" \
 		$SRC_LOADADDR \
-		LOCALVERSION="-$LINUXFAMILY" \
+		LOCALVERSION="$kernel_localversion" \
 		$KERNEL_IMAGE_TYPE ${KERNEL_EXTRA_TARGETS:-modules dtbs} 2>>$DEST/${LOG_SUBPATH}/compilation.log' \
 		${PROGRESS_LOG_TO_FILE:+' | tee -a $DEST/${LOG_SUBPATH}/compilation.log'} \
 		${OUTPUT_DIALOG:+' | dialog --backtitle "$backtitle" \
@@ -539,7 +543,7 @@ CUSTOM_KERNEL_CONFIG
 		KDEB_PKGVERSION=$REVISION \
 		KDEB_COMPRESS=${DEB_COMPRESS} \
 		BRANCH=$BRANCH \
-		LOCALVERSION="-${LINUXFAMILY}" \
+		LOCALVERSION="$kernel_localversion" \
 		KBUILD_DEBARCH=$ARCH \
 		ARCH=$ARCHITECTURE \
 		DEBFULLNAME="$MAINTAINER" \

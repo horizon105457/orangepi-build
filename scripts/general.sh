@@ -501,6 +501,16 @@ fetch_from_repo()
 	local ref=$3
 	local ref_subdir=$4
 
+	# Root-cause governance: GitHub HTTP/2 framing errors (curl 16 / missing
+	# flush-packet) are a transport-layer defect. Force HTTP/1.1 for every
+	# git op in this build process via GIT_CONFIG_COUNT (git >= 2.31;
+	# verified on 2.34). Scope is process-only: no config files touched,
+	# no .git pollution, user's own git usage unaffected. Reproducible:
+	# any build host cloning this repo inherits the fix.
+	export GIT_CONFIG_COUNT=1
+	export GIT_CONFIG_KEY_0=http.version
+	export GIT_CONFIG_VALUE_0=HTTP/1.1
+
 	# Set GitHub mirror before anything else touches $url
 	url=${url//'https://github.com/'/$GITHUB_SOURCE'/'}
 
