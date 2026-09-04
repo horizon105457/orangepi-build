@@ -1,0 +1,395 @@
+#!/bin/bash
+
+set -euo pipefail
+
+LEGACY_CONFIG_FILE="/etc/default/opibot-performance-mode"
+BOOT_PROFILE_CONFIG="/etc/default/opibot-boot-profile"
+RUNTIME_MODE_CONFIG="/etc/default/opibot-runtime-mode"
+RUNTIME_RT_TUNE="/usr/local/sbin/runtime-rt-tune"
+STATE_FILE="/run/opibot-performance-mode.state"
+RUNTIME_STATE_FILE="/run/opibot-runtime-mode.state"
+
+BOOT_PROFILE="rt-high-performance"
+BOOT_RUNTIME_MODE="rt-high-performance"
+ROS2_ACTIVE_MODE="rt-high-performance"
+ACTIVE_MODE="rt-high-performance"
+RUNTIME_DEFAULT_MODE="control-active"
+RUNTIME_ACTIVE_MODE="control-active"
+RUNTIME_IDLE_MODE="standby"
+IDLE_MODE="low-power"
+ENABLE_IDLE_AUTOSWITCH="yes"
+ROS2_TARGET="opibot-ros2.target"
+ACTIVE_TARGET="opibot-mission.target"
+IDLE_GRACE_SECONDS="120"
+RT_CPUS="6,7"
+BG_CPUS="0-5"
+NIC_DEV="eth0"
+LOW_POWER_GOVERNOR="schedutil"
+LOW_POWER_BIG_MAX_FREQ_KHZ="1800000"
+LOW_POWER_LITTLE_MAX_FREQ_KHZ="1200000"
+CONTROL_ACTIVE_MODE="control-active"
+PERCEPTION_ACTIVE_MODE="perception-active"
+
+log() {
+	echo "[opibot-mode] $*"
+}
+
+map_new_mode_to_legacy() {
+	case "$1" in
+		control-active|perception-active)
+			echo "rt-high-performance"
+			;;
+		standby)
+			echo "low-power"
+			;;
+		"")
+			echo ""
+			;;
+		*)
+			echo "$1"
+			;;
+	esac
+}
+
+load_config() {
+	if [[ -f "${LEGACY_CONFIG_FILE}" ]]; then
+		# shellcheck disable=SC1090
+		source "${LEGACY_CONFIG_FILE}"
+		ACTIVE_MODE="${ACTIVE_MODE:-${ROS2_ACTIVE_MODE}}"
+		ACTIVE_TARGET="${ACTIVE_TARGET:-${ROS2_TARGET}}"
+	fi
+
+	if [[ -f "${BOOT_PROFILE_CONFIG}" ]]; then
+		# shellcheck disable=SC1090
+		source "${BOOT_PROFILE_CONFIG}"
+		RT_CPUS="${CONTROL_CPUS:-${RT_CPUS}}"
+		BG_CPUS="${SYSTEM_CPUS:-${BG_CPUS}}"
+		case "${BOOT_PROFILE:-}" in
+			rt-control)
+				BOOT_PROFILE="rt-high-performance"
+				;;
+			balanced)
+				BOOT_PROFILE="low-power"
+				;;
+		esac
+	fi
+
+	if [[ -f "${RUNTIME_MODE_CONFIG}" ]]; then
+		# shellcheck disable=SC1090
+		source "${RUNTIME_MODE_CONFIG}"
+		RUNTIME_DEFAULT_MODE="${DEFAULT_RUNTIME_MODE:-${RUNTIME_DEFAULT_MODE}}"
+		RUNTIME_ACTIVE_MODE="${ACTIVE_MODE:-${ROS2_ACTIVE_MODE:-${RUNTIME_ACTIVE_MODE}}}"
+		RUNTIME_IDLE_MODE="${IDLE_RETURN_MODE:-${RUNTIME_IDLE_MODE}}"
+		BOOT_RUNTIME_MODE="$(map_new_mode_to_legacy "${RUNTIME_DEFAULT_MODE}")"
+		ROS2_ACTIVE_MODE="$(map_new_mode_to_legacy "${ROS2_ACTIVE_MODE:-${RUNTIME_ACTIVE_MODE}}")"
+		ACTIVE_MODE="$(map_new_mode_to_legacy "${RUNTIME_ACTIVE_MODE}")"
+		IDLE_MODE="$(map_new_mode_to_legacy "${RUNTIME_IDLE_MODE}")"
+		ACTIVE_TARGET="${ACTIVE_TARGET:-${ROS2_TARGET}}"
+	fi
+
+	ACTIVE_MODE="${ACTIVE_MODE:-${ROS2_ACTIVE_MODE}}"
+	RUNTIME_ACTIVE_MODE="${RUNTIME_ACTIVE_MODE:-${CONTROL_ACTIVE_MODE}}"
+	RUNTIME_IDLE_MODE="${RUNTIME_IDLE_MODE:-standby}"
+	ACTIVE_TARGET="${ACTIVE_TARGET:-${ROS2_TARGET}}"
+
+	RT_BOOTARGS="nohz_full=${RT_CPUS} rcu_nocbs=${RT_CPUS} isolcpus=managed,domain,${RT_CPUS} irqaffinity=${BG_CPUS}"
+}
+
+require_root() {
+	if [[ ${EUID} -ne 0 ]]; then
+		echo "Run as root"
+		exit 1
+	fi
+}
+
+expand_cpulist() {
+	python3 - "$1" <<'PY'
+import sys
+
+items = []
+for token in sys.argv[1].split(','):
+    token = token.strip()
+    if not token:
+        continue
+    if '-' in token:
+        start, end = map(int, token.split('-', 1))
+        items.extend(range(start, end + 1))
+    else:
+        items.append(int(token))
+print(' '.join(str(cpu) for cpu in items))
+PY
+}
+
+set_governor_for_cpu() {
+	local cpu="$1"
+	local governor="$2"
+	local path="/sys/devices/system/cpu/cpu${cpu}/cpufreq/scaling_governor"
+	[[ -w "${path}" ]] && echo "${governor}" > "${path}" || true
+}
+
+set_governor_for_list() {
+	local cpus="$1"
+	local governor="$2"
+	local cpu
+	for cpu in $(expand_cpulist "${cpus}"); do
+		set_governor_for_cpu "${cpu}" "${governor}"
+	done
+}
+
+set_cpuidle_for_list() {
+	local cpus="$1"
+	local disabled="$2"
+	local cpu state
+	for cpu in $(expand_cpulist "${cpus}"); do
+		for state in /sys/devices/system/cpu/cpu${cpu}/cpuidle/state*/disable; do
+			[[ -w "${state}" ]] && echo "${disabled}" > "${state}" || true
+		done
+	done
+}
+
+set_cpuidle_for_all() {
+	local disabled="$1"
+	local state
+	for state in /sys/devices/system/cpu/cpu*/cpuidle/state*/disable; do
+		[[ -w "${state}" ]] && echo "${disabled}" > "${state}" || true
+	done
+}
+
+reset_policy_limits() {
+	local policy min_path max_path min_value max_value
+	for policy in /sys/devices/system/cpu/cpufreq/policy*; do
+		[[ -d "${policy}" ]] || continue
+		min_path="${policy}/scaling_min_freq"
+		max_path="${policy}/scaling_max_freq"
+		min_value=$(cat "${policy}/cpuinfo_min_freq" 2>/dev/null || true)
+		max_value=$(cat "${policy}/cpuinfo_max_freq" 2>/dev/null || true)
+		[[ -n "${max_value}" && -w "${max_path}" ]] && echo "${max_value}" > "${max_path}" || true
+		[[ -n "${min_value}" && -w "${min_path}" ]] && echo "${min_value}" > "${min_path}" || true
+	done
+}
+
+apply_low_power_limits() {
+	local policy first_cpu target max_value min_path max_path affected first_token
+	for policy in /sys/devices/system/cpu/cpufreq/policy*; do
+		[[ -d "${policy}" ]] || continue
+		affected=$(cat "${policy}/affected_cpus" 2>/dev/null || true)
+		first_token=${affected%% *}
+		first_cpu=${first_token%%-*}
+		if [[ -z "${first_cpu}" ]]; then
+			continue
+		fi
+		if (( first_cpu >= 4 )); then
+			target="${LOW_POWER_BIG_MAX_FREQ_KHZ}"
+		else
+			target="${LOW_POWER_LITTLE_MAX_FREQ_KHZ}"
+		fi
+		max_value=$(cat "${policy}/cpuinfo_max_freq" 2>/dev/null || true)
+		min_path="${policy}/scaling_min_freq"
+		max_path="${policy}/scaling_max_freq"
+		if [[ -n "${target}" && -n "${max_value}" && -w "${max_path}" ]]; then
+			if (( target > max_value )); then
+				target="${max_value}"
+			fi
+			echo "${target}" > "${max_path}" || true
+		fi
+		if [[ -w "${min_path}" && -r "${policy}/cpuinfo_min_freq" ]]; then
+			cat "${policy}/cpuinfo_min_freq" > "${min_path}" || true
+		fi
+	done
+}
+
+reset_queue_affinity() {
+	local file
+	for file in /sys/class/net/${NIC_DEV}/queues/tx-*/xps_cpus /sys/class/net/${NIC_DEV}/queues/rx-*/rps_cpus; do
+		[[ -w "${file}" ]] && echo 0 > "${file}" || true
+	done
+}
+
+record_state() {
+	local mode="$1"
+	mkdir -p "$(dirname "${STATE_FILE}")"
+	echo "${mode}" > "${STATE_FILE}"
+}
+
+record_runtime_state() {
+	local mode="$1"
+	mkdir -p "$(dirname "${RUNTIME_STATE_FILE}")"
+	echo "${mode}" > "${RUNTIME_STATE_FILE}"
+}
+
+current_state() {
+	cat "${STATE_FILE}" 2>/dev/null || true
+}
+
+apply_rt_high_performance() {
+	local semantic_mode="${1:-${CONTROL_ACTIVE_MODE}}"
+	log "Applying rt-high-performance mode"
+	reset_policy_limits
+	set_cpuidle_for_list "${RT_CPUS}" 1
+	set_governor_for_list "${BG_CPUS}" schedutil
+	set_governor_for_list "${RT_CPUS}" performance
+	if [[ -x "${RUNTIME_RT_TUNE}" ]]; then
+		RT_CPUS="${RT_CPUS}" BG_CPUS="${BG_CPUS}" NIC_DEV="${NIC_DEV}" "${RUNTIME_RT_TUNE}" || true
+	else
+		systemctl stop irqbalance 2>/dev/null || true
+		systemctl disable irqbalance 2>/dev/null || true
+	fi
+	record_state "rt-high-performance"
+	record_runtime_state "${semantic_mode}"
+	log "rt-high-performance mode applied"
+}
+
+apply_low_power() {
+	local semantic_mode="${1:-${RUNTIME_IDLE_MODE}}"
+	log "Applying low-power mode"
+	reset_policy_limits
+	apply_low_power_limits
+	set_governor_for_all "${LOW_POWER_GOVERNOR}"
+	set_cpuidle_for_all 0
+	systemctl unmask irqbalance.service 2>/dev/null || true
+	systemctl enable irqbalance.service 2>/dev/null || true
+	systemctl start irqbalance.service 2>/dev/null || true
+	if [[ -d "/sys/class/net/${NIC_DEV}" ]]; then
+		which ethtool >/dev/null 2>&1 && {
+			ethtool -K "${NIC_DEV}" gro on gso on tso on || true
+		}
+		which tc >/dev/null 2>&1 && {
+			tc qdisc del dev "${NIC_DEV}" root 2>/dev/null || true
+		}
+		reset_queue_affinity
+	fi
+	record_state "low-power"
+	record_runtime_state "${semantic_mode}"
+	log "low-power mode applied"
+}
+
+set_governor_for_all() {
+	local governor="$1"
+	local cpu_path cpu
+	for cpu_path in /sys/devices/system/cpu/cpu[0-9]*; do
+		cpu=${cpu_path##*/cpu}
+		set_governor_for_cpu "${cpu}" "${governor}"
+	done
+}
+
+show_status() {
+	load_config
+	printf 'boot_profile=%s\n' "${BOOT_PROFILE}"
+	printf 'boot_runtime_mode=%s\n' "${BOOT_RUNTIME_MODE}"
+	printf 'active_mode=%s\n' "${ACTIVE_MODE}"
+	printf 'idle_mode=%s\n' "${IDLE_MODE}"
+	printf 'idle_autoswitch=%s\n' "${ENABLE_IDLE_AUTOSWITCH}"
+	printf 'active_target=%s\n' "${ACTIVE_TARGET}"
+	printf 'current_state=%s\n' "$(current_state)"
+	for cpu_path in /sys/devices/system/cpu/cpu[0-9]*; do
+		[[ -f "${cpu_path}/cpufreq/scaling_governor" ]] || continue
+		printf '%s governor=%s\n' "${cpu_path##*/}" "$(cat "${cpu_path}/cpufreq/scaling_governor")"
+	done
+	for policy in /sys/devices/system/cpu/cpufreq/policy*; do
+		[[ -d "${policy}" ]] || continue
+		printf '%s max=%s current=%s affected=%s\n' \
+			"${policy##*/}" \
+			"$(cat "${policy}/scaling_max_freq" 2>/dev/null || echo n/a)" \
+			"$(cat "${policy}/scaling_cur_freq" 2>/dev/null || echo n/a)" \
+			"$(cat "${policy}/affected_cpus" 2>/dev/null || echo n/a)"
+	done
+}
+
+apply_mode() {
+	local mode="$1"
+	local semantic_mode="${2:-}"
+	case "${mode}" in
+		rt-high-performance)
+			apply_rt_high_performance "${semantic_mode:-${CONTROL_ACTIVE_MODE}}"
+			;;
+		low-power)
+			apply_low_power "${semantic_mode:-${RUNTIME_IDLE_MODE}}"
+			;;
+		*)
+			echo "Unknown mode: ${mode}" >&2
+			exit 1
+			;;
+	esac
+}
+
+apply_config_mode() {
+	apply_mode "${BOOT_RUNTIME_MODE}" "${RUNTIME_DEFAULT_MODE}"
+}
+
+watch_modes() {
+	local last_active=0
+	local now active active_units current_mode
+	while true; do
+		active=0
+		if systemctl is-active --quiet "${ACTIVE_TARGET}"; then
+			active=1
+		fi
+
+		now=$(date +%s)
+		current_mode=$(current_state)
+		if (( active == 1 )); then
+			last_active=${now}
+			if [[ "${current_mode}" != "${ACTIVE_MODE}" ]]; then
+				log "${ACTIVE_TARGET} active, switching to ${ACTIVE_MODE}"
+				apply_mode "${ACTIVE_MODE}" "${RUNTIME_ACTIVE_MODE}"
+			fi
+		elif [[ "${ENABLE_IDLE_AUTOSWITCH}" == "yes" ]]; then
+			if (( last_active == 0 )); then
+				last_active=${now}
+			fi
+			if (( now - last_active >= IDLE_GRACE_SECONDS )); then
+				if [[ "${current_mode}" != "${IDLE_MODE}" ]]; then
+					log "${ACTIVE_TARGET} idle, switching to ${IDLE_MODE}"
+					apply_mode "${IDLE_MODE}" "${RUNTIME_IDLE_MODE}"
+				fi
+			fi
+		fi
+		sleep 5
+	done
+}
+
+usage() {
+	cat <<'EOF'
+Usage:
+  opibot-performance-mode apply [rt-high-performance|low-power]
+  opibot-performance-mode apply-config
+  opibot-performance-mode watch
+  opibot-performance-mode status
+
+Notes:
+  - rt-high-performance remains the default mode.
+  - Boot profile is controlled by configuration files and reboot, not by CLI.
+  - Runtime switching only changes hot-applicable settings.
+	- Active workload tracking defaults to the generic opibot-mission.target.
+EOF
+}
+
+main() {
+	local command="${1:-status}"
+	local mode="${2:-}"
+	load_config
+	case "${command}" in
+		apply)
+			require_root
+			mode="${mode:-${BOOT_RUNTIME_MODE}}"
+			apply_mode "${mode}"
+			;;
+		apply-config)
+			require_root
+			apply_config_mode
+			;;
+		watch)
+			require_root
+			watch_modes
+			;;
+		status)
+			show_status
+			;;
+		*)
+			usage
+			exit 1
+			;;
+	esac
+}
+
+main "$@"

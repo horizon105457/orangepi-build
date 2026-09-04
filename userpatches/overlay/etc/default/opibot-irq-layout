@@ -1,0 +1,11 @@
+# IRQ and device-domain layout skeleton.
+# Phase A freezes naming only. Phase B will consume these values.
+
+CONTROL_IRQ_PATTERNS="can fdcan pwm imu_sync"
+PERCEPTION_IRQ_PATTERNS="eth lidar camera usb3 vision"
+SYSTEM_IRQ_PATTERNS="xhci bluetooth wifi display"
+CONTROL_IRQ_CPUS=6,7
+PERCEPTION_IRQ_CPUS=4,5
+SYSTEM_IRQ_CPUS=0-3
+NIC_CONTROL_DEVICES=""
+NIC_PERCEPTION_DEVICES="eth0"

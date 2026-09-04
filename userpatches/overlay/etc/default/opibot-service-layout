@@ -1,0 +1,19 @@
+# Service-to-domain layout policy.
+# List services as whitespace-separated unit names. A missing suffix defaults to
+# .service. Keep control loops off perception/planning CPUs unless you are
+# intentionally overriding the platform policy.
+
+CONTROL_ALLOWED_CPUS=""
+PERCEPTION_ALLOWED_CPUS=""
+PLANNING_ALLOWED_CPUS=""
+SUPPORT_ALLOWED_CPUS=""
+
+CONTROL_CPU_WEIGHT=10000
+PERCEPTION_CPU_WEIGHT=7000
+PLANNING_CPU_WEIGHT=6000
+SUPPORT_CPU_WEIGHT=200
+
+CONTROL_SERVICES=""
+PERCEPTION_SERVICES=""
+PLANNING_SERVICES=""
+SUPPORT_SERVICES=""

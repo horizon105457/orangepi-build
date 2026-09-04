@@ -1,0 +1,24 @@
+# =============================================================================
+# can0-setup.service — RK3588s CAN0 接口自动配置 (内置 CANFD / DroneCAN)
+#
+# 分层设计: 本 unit 只是钩子, 全部逻辑在下层脚本 /usr/local/sbin/can0-setup.sh
+#   - 修改 bitrate/restart-ms/等待/附加步骤 → 改脚本, 本 unit 永不修改
+#   - 附加步骤 → /etc/can0-setup.d/*.sh (可执行)
+# 依赖:
+#   - RK3588 内置 CAN 控制器 (rockchip_canfd), 由 dts/overlay 使能 (如 can1-m1)
+# 用法:
+#   sudo systemctl status can0-setup
+#   sudo systemctl restart can0-setup     # 重新配置 (模块接入后)
+# =============================================================================
+[Unit]
+Description=RK3588s CAN0 Setup (DroneCAN 1Mbit/s)
+After=local-fs.target
+Before=robot-stack.service docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/can0-setup.sh
+
+[Install]
+WantedBy=multi-user.target

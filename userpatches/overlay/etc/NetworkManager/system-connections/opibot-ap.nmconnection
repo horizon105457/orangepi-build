@@ -1,0 +1,28 @@
+# AP provisioning hotspot — public credentials (no secret management needed)
+# SSID: opibot-cm5  PSK: opibot1234 (public default, change via hotspot config)
+# Role: STA-first (Master, priority 100) / AP fallback (priority 10):
+#   first boot without a reachable network -> AP opens for provisioning;
+#   after provisioning (STA profile added) -> Master connects on reboot.
+[connection]
+id=opibot-ap
+uuid=4f9c8b2e-7d63-4a51-b8f0-3e1a2c5d7f90
+type=wifi
+interface-name=wlan0
+autoconnect=true
+autoconnect-priority=10
+
+[wifi]
+ssid=opibot-cm5
+mode=ap
+band=bg
+channel=6
+
+[wifi-security]
+key-mgmt=wpa-psk
+psk=opibot1234
+
+[ipv4]
+method=shared
+
+[ipv6]
+method=ignore

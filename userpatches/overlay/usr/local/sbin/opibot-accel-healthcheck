@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -u
+
+log_file="/var/log/opibot-accel-healthcheck.log"
+
+{
+	echo "[accel-check] ===== $(date -Is) ====="
+	echo "[accel-check] Kernel: $(uname -r)"
+	ls -l /dev/dri/renderD* 2>/dev/null || echo "[accel-check:WARN] render node missing"
+	id || true
+	ldconfig -p | grep -E 'librknnrt|libMaliOpenCL|libOpenCL|libjpeg\.so\.62' || true
+	if python3 -c "import rknnlite" 2>/dev/null; then
+		echo "[accel-check] rknn-toolkit-lite2: available (onboard inference OK)"
+	else
+		echo "[accel-check:WARN] rknn-toolkit-lite2 not installed"
+	fi
+	if command -v rknn_demo >/dev/null 2>&1 && [[ -r /usr/share/rknn_demo/mobilenet_ssd.rknn ]]; then
+		timeout 5 rknn_demo /usr/share/rknn_demo/mobilenet_ssd.rknn >/tmp/opibot-rknn-demo.out 2>/tmp/opibot-rknn-demo.err || true
+		echo "[accel-check] rknn_demo stderr (head):"
+		head -n 20 /tmp/opibot-rknn-demo.err 2>/dev/null || true
+	else
+		echo "[accel-check:WARN] rknn_demo or sample model not found"
+	fi
+	echo "[accel-check] ===== done ====="
+} >> "${log_file}" 2>&1

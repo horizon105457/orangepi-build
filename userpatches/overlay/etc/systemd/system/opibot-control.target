@@ -1,0 +1,4 @@
+[Unit]
+Description=OPiBot control workload target
+Wants=opibot-base.target opibot-control-prepare.service
+After=opibot-base.target opibot-control-prepare.service

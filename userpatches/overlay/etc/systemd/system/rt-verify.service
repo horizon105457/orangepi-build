@@ -1,0 +1,19 @@
+# =============================================================================
+# rt-verify.service — 开机 RT 配置自检 (oneshot)
+# 启动后自动验证 RT 内核/隔离参数/调优服务, 结果写入 journald:
+#   journalctl -u rt-verify -b
+# =============================================================================
+[Unit]
+Description=RT configuration verification (post-boot self-check)
+After=multi-user.target
+ConditionPathExists=/usr/local/bin/rt-verify
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/rt-verify
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,27 @@
+# Robot device permissions — RK3588s (Orange Pi CM5) adaptation
+# Mirrors rpicm5-auto-deploy module 06, adjusted for Rockchip platform:
+#   - UART: Rockchip ttyS* + USB-serial ttyUSB* + CDC-ACM debug probe ttyACM*
+#   - Media: video4linux + media controller + v4l-subdev (libcamera rkisp pipeline)
+# Installed to /etc/udev/rules.d/99-robot-permissions.rules
+
+# SPI devices
+SUBSYSTEM=="spidev", GROUP="spi", MODE="0660"
+
+# UART devices (Rockchip ttyS*, USB serial adapters, CDC-ACM probes)
+SUBSYSTEM=="tty", KERNEL=="ttyS[0-9]*", GROUP="dialout", MODE="0660"
+SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", GROUP="dialout", MODE="0660"
+SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", GROUP="dialout", MODE="0660"
+
+# I2C devices
+SUBSYSTEM=="i2c-dev", GROUP="i2c", MODE="0660"
+
+# GPIO
+SUBSYSTEM=="gpio", GROUP="gpio", MODE="0660"
+
+# Video / V4L2 / media controller (CSI camera + rkisp pipeline)
+SUBSYSTEM=="video4linux", GROUP="video", MODE="0660"
+SUBSYSTEM=="media", GROUP="video", MODE="0660"
+KERNEL=="v4l-subdev*", GROUP="video", MODE="0660"
+
+# NPU (RK3588 rknpu, 6 TOPS) — video group access for container passthrough
+KERNEL=="rknpu", GROUP="video", MODE="0660"

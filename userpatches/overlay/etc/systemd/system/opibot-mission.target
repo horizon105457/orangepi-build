@@ -1,0 +1,4 @@
+[Unit]
+Description=OPiBot mission workload target
+Wants=opibot-base.target opibot-perception.target opibot-control.target
+After=opibot-base.target opibot-perception.target opibot-control.target

@@ -1,0 +1,15 @@
+[Unit]
+Description=Apply OPiBot IRQ layout
+After=opibot-runtime-mode.service
+Wants=opibot-runtime-mode.service
+ConditionPathExists=/usr/local/sbin/opibot-irq-layout
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/opibot-irq-layout apply
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

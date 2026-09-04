@@ -1,0 +1,77 @@
+#!/bin/bash
+
+set -euo pipefail
+
+RUNTIME_RT_TUNE="/usr/local/sbin/runtime-rt-tune"
+RUNTIME_MODE_STATE="/run/opibot-runtime-mode.state"
+LEGACY_MODE_STATE="/run/opibot-performance-mode.state"
+NIC_DEV="${NIC_DEV:-eth0}"
+
+usage() {
+	cat <<'EOF'
+Usage:
+  opibot-irq-layout apply
+  opibot-irq-layout apply control-active
+  opibot-irq-layout apply perception-active
+  opibot-irq-layout apply standby
+  opibot-irq-layout status
+EOF
+}
+
+current_mode() {
+	cat "${RUNTIME_MODE_STATE}" 2>/dev/null || cat "${LEGACY_MODE_STATE}" 2>/dev/null || echo unknown
+}
+
+reset_queue_affinity() {
+	local file
+	for file in /sys/class/net/${NIC_DEV}/queues/tx-*/xps_cpus /sys/class/net/${NIC_DEV}/queues/rx-*/rps_cpus; do
+		[[ -w "${file}" ]] && echo 0 > "${file}" || true
+	done
+}
+
+apply_perception_layout() {
+	systemctl unmask irqbalance.service 2>/dev/null || true
+	systemctl enable irqbalance.service 2>/dev/null || true
+	systemctl start irqbalance.service 2>/dev/null || true
+	reset_queue_affinity
+}
+
+apply_layout() {
+	local mode="${1:-$(current_mode)}"
+	case "${mode}" in
+		control-active|rt-high-performance)
+			if [[ -x "${RUNTIME_RT_TUNE}" ]]; then
+				"${RUNTIME_RT_TUNE}"
+			fi
+			;;
+		perception-active)
+			apply_perception_layout
+			;;
+		standby|low-power|unknown)
+			# Low-power restoration stays owned by runtime-mode low-power path.
+			;;
+		*)
+			echo "Unknown mode: ${mode}" >&2
+			exit 1
+			;;
+	esac
+}
+
+main() {
+	case "${1:-status}" in
+		apply)
+			apply_layout "${2:-}"
+			;;
+		status)
+			printf 'mode=%s\n' "$(current_mode)"
+			printf 'runtime_rt_tune=%s\n' "${RUNTIME_RT_TUNE}"
+			printf 'nic_dev=%s\n' "${NIC_DEV}"
+			;;
+		*)
+			usage
+			exit 1
+			;;
+	esac
+}
+
+main "$@"

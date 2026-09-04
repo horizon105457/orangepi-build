@@ -1,0 +1,21 @@
+# Transitional compatibility file.
+# New configuration is being split across opibot-boot-profile,
+# opibot-runtime-mode, opibot-irq-layout, and opibot-service-layout.
+
+BOOT_PROFILE=rt-high-performance
+BOOT_RUNTIME_MODE=rt-high-performance
+ROS2_ACTIVE_MODE=rt-high-performance
+ACTIVE_MODE=rt-high-performance
+IDLE_MODE=low-power
+ENABLE_IDLE_AUTOSWITCH=yes
+# ROS2 is preinstalled in the base image. ACTIVE_TARGET follows actual
+# runtime workloads, while opibot-ros2.target remains a base-framework hook.
+ROS2_TARGET=opibot-mission.target
+ACTIVE_TARGET=opibot-mission.target
+IDLE_GRACE_SECONDS=120
+RT_CPUS=6,7
+BG_CPUS=0-5
+NIC_DEV=eth0
+LOW_POWER_GOVERNOR=schedutil
+LOW_POWER_BIG_MAX_FREQ_KHZ=1800000
+LOW_POWER_LITTLE_MAX_FREQ_KHZ=1200000

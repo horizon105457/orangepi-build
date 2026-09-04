@@ -1,0 +1,4 @@
+[Unit]
+Description=OPiBot perception workload target
+Wants=opibot-base.target opibot-perception-prepare.service
+After=opibot-base.target opibot-perception-prepare.service

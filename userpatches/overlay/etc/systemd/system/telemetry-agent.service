@@ -1,0 +1,20 @@
+[Unit]
+Description=Lightweight Telemetry Agent (RK3588s robot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/telemetry-agent
+EnvironmentFile=-/etc/default/telemetry-agent
+ExecStart=/usr/bin/python3 -m agent.main
+Restart=always
+RestartSec=5
+Nice=10
+CPUQuota=5%
+MemoryMax=20M
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

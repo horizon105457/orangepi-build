@@ -1,0 +1,7 @@
+# Static boot-time CPU domain layout.
+# This file is the new source of truth for reboot-required isolation settings.
+
+BOOT_PROFILE=rt-control
+SYSTEM_CPUS=0-3
+PERCEPTION_CPUS=4-5
+CONTROL_CPUS=6,7

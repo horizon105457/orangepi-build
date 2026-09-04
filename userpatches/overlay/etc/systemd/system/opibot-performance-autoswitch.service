@@ -1,0 +1,15 @@
+[Unit]
+Description=Automatically switch OPiBot runtime performance mode
+After=opibot-performance-mode.service
+Requires=opibot-performance-mode.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/opibot-performance-mode watch
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

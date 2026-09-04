@@ -1,0 +1,52 @@
+#!/bin/bash
+# Real-time System Configuration Validation Script
+# Run this after first boot to verify RT setup
+
+echo "=== Real-time Configuration Verification ==="
+
+# Check kernel version and RT patch
+echo -e "\n1. Kernel Version:"
+uname -r | grep -i rt && echo "✓ RT kernel detected" || echo "✗ RT kernel NOT found"
+
+# Check boot parameters
+echo -e "\n2. Boot Parameters:"
+cat /proc/cmdline | grep -q "nohz_full" && echo "✓ nohz_full configured" || echo "✗ nohz_full missing"
+cat /proc/cmdline | grep -q "rcu_nocbs" && echo "✓ rcu_nocbs configured" || echo "✗ rcu_nocbs missing"
+cat /proc/cmdline | grep -q "isolcpus" && echo "✓ isolcpus configured" || echo "✗ isolcpus missing"
+
+# Check RT tuning service
+echo -e "\n3. RT Tuning Service:"
+systemctl is-active runtime-rt-tune >/dev/null 2>&1 && echo "✓ runtime-rt-tune active" || echo "✗ runtime-rt-tune inactive"
+systemctl is-enabled runtime-rt-tune >/dev/null 2>&1 && echo "✓ runtime-rt-tune enabled" || echo "✗ runtime-rt-tune disabled"
+
+# Check irqbalance status
+echo -e "\n4. IRQ Balance:"
+systemctl is-active irqbalance >/dev/null 2>&1 && echo "✗ irqbalance still running (should be disabled)" || echo "✓ irqbalance disabled"
+
+# Check clocksource
+echo -e "\n5. Clock Source:"
+cat /sys/devices/system/clocksource/clocksource0/current_clocksource
+
+# Check realtime group
+echo -e "\n6. Realtime Group:"
+getent group realtime >/dev/null && echo "✓ realtime group exists" || echo "✗ realtime group missing"
+
+# Check CPU governors
+echo -e "\n7. CPU Governors (RT cores should be 'performance'):"
+for cpu in 6 7; do
+  if [[ -f /sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_governor ]]; then
+    gov=$(cat /sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_governor)
+    echo "  CPU$cpu: $gov"
+  fi
+done
+
+# Check RT priority limits
+echo -e "\n8. RT Priority Limits:"
+if [[ -f /etc/security/limits.d/99-realtime.conf ]]; then
+  echo "✓ RT limits configured"
+  ulimit -r 2>/dev/null && echo "  Current rtprio limit: $(ulimit -r)" || echo "  (logout/login required to apply)"
+else
+  echo "✗ RT limits NOT configured"
+fi
+
+echo -e "\n=== Verification Complete ==="

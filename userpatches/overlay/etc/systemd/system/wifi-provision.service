@@ -1,0 +1,18 @@
+# Web provisioning for the opibot-cm5 AP hotspot — http://10.42.0.1
+# Listens on the NM shared subnet; writes an NM STA profile and switches.
+# AP stays available as an SSH debug channel (10.42.0.1).
+[Unit]
+Description=OPiBot WiFi provisioning server (AP subnet)
+After=network-online.target NetworkManager.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/wifi-provision/provision-server.py
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

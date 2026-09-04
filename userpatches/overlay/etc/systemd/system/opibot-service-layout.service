@@ -1,0 +1,15 @@
+[Unit]
+Description=Apply OPiBot service-to-domain layout
+After=opibot-runtime-mode.service opibot-irq-layout.service
+Wants=opibot-runtime-mode.service opibot-irq-layout.service
+ConditionPathExists=/usr/local/sbin/opibot-service-layout
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/opibot-service-layout apply-config
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=opibot-base.target

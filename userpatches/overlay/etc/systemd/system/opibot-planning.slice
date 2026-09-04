@@ -1,0 +1,8 @@
+[Unit]
+Description=OPiBot planning workload slice
+
+[Slice]
+CPUAccounting=yes
+IOAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes

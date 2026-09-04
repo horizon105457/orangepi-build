@@ -1,0 +1,115 @@
+#!/bin/bash
+
+set -euo pipefail
+
+LEGACY_RUNTIME_MODE="/usr/local/sbin/opibot-performance-mode"
+RUNTIME_MODE_CONFIG="/etc/default/opibot-runtime-mode"
+RUNTIME_STATE_FILE="/run/opibot-runtime-mode.state"
+IRQ_LAYOUT_TOOL="/usr/local/sbin/opibot-irq-layout"
+DEFAULT_RUNTIME_MODE="control-active"
+
+usage() {
+	cat <<'EOF'
+Usage:
+  opibot-runtime-mode apply [control-active|perception-active|standby|rt-high-performance|low-power]
+  opibot-runtime-mode apply-config
+  opibot-runtime-mode watch
+  opibot-runtime-mode status
+EOF
+}
+
+map_mode() {
+	case "$1" in
+		control-active|perception-active)
+			echo "rt-high-performance"
+			;;
+		standby)
+			echo "low-power"
+			;;
+		*)
+			echo "$1"
+			;;
+	esac
+}
+
+load_runtime_config() {
+	if [[ -f "${RUNTIME_MODE_CONFIG}" ]]; then
+		# shellcheck disable=SC1090
+		source "${RUNTIME_MODE_CONFIG}"
+	fi
+	DEFAULT_RUNTIME_MODE="${DEFAULT_RUNTIME_MODE:-control-active}"
+}
+
+record_runtime_state() {
+	local mode="$1"
+	mkdir -p "$(dirname "${RUNTIME_STATE_FILE}")"
+	echo "${mode}" > "${RUNTIME_STATE_FILE}"
+}
+
+current_runtime_state() {
+	cat "${RUNTIME_STATE_FILE}" 2>/dev/null || true
+}
+
+sync_irq_layout() {
+	local mode="$1"
+	if [[ -x "${IRQ_LAYOUT_TOOL}" ]]; then
+		"${IRQ_LAYOUT_TOOL}" apply "${mode}" || true
+	fi
+}
+
+apply_runtime_mode() {
+	local requested_mode="$1"
+	local legacy_mode
+	shift || true
+	legacy_mode="$(map_mode "${requested_mode}")"
+	"${LEGACY_RUNTIME_MODE}" apply "${legacy_mode}" "$@"
+	record_runtime_state "${requested_mode}"
+	sync_irq_layout "${requested_mode}"
+}
+
+apply_runtime_config_mode() {
+	load_runtime_config
+	apply_runtime_mode "${DEFAULT_RUNTIME_MODE}"
+}
+
+show_status() {
+	printf 'runtime_mode=%s\n' "$(current_runtime_state)"
+	"${LEGACY_RUNTIME_MODE}" status
+}
+
+if [[ ! -x "${LEGACY_RUNTIME_MODE}" ]]; then
+	echo "opibot-runtime-mode fallback missing: ${LEGACY_RUNTIME_MODE}" >&2
+	exit 1
+fi
+
+command="${1:-status}"
+
+case "${command}" in
+	apply)
+		shift || true
+		if [[ $# -ge 1 ]]; then
+			mode="$1"
+			shift
+			apply_runtime_mode "${mode}" "$@"
+			exit 0
+		fi
+		load_runtime_config
+		apply_runtime_mode "${DEFAULT_RUNTIME_MODE}"
+		exit 0
+		;;
+	apply-config)
+		apply_runtime_config_mode
+		;;
+	watch)
+		exec "${LEGACY_RUNTIME_MODE}" watch "${@:2}"
+		;;
+	status)
+		show_status
+		;;
+	-h|--help|help)
+		usage
+		;;
+	*)
+		exec "${LEGACY_RUNTIME_MODE}" "$@"
+		;;
+esac

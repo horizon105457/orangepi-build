@@ -1,0 +1,14 @@
+[Unit]
+Description=Switch OPiBot to perception-active before planning workloads
+Before=opibot-planning.target
+PartOf=opibot-planning.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/opibot-runtime-mode apply perception-active
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=opibot-planning.target

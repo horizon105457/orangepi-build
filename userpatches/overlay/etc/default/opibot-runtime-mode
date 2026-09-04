@@ -1,0 +1,18 @@
+# Runtime mode model used by the future opibot-runtime-mode path.
+# Phase A only freezes naming and values; the active runtime implementation
+# still uses opibot-performance-mode as a compatibility layer.
+
+DEFAULT_RUNTIME_MODE=control-active
+ROS2_ACTIVE_MODE=control-active
+ACTIVE_MODE=control-active
+# ROS2 is part of the default base image. ACTIVE_TARGET tracks actual
+# deployed workloads, not middleware presence alone.
+ACTIVE_TARGET=opibot-mission.target
+CONTROL_ACTIVE_MODE=control-active
+PERCEPTION_ACTIVE_MODE=perception-active
+IDLE_RETURN_MODE=standby
+ENABLE_IDLE_AUTOSWITCH=yes
+IDLE_GRACE_SECONDS=120
+LOW_POWER_GOVERNOR=schedutil
+LOW_POWER_BIG_MAX_FREQ_KHZ=1800000
+LOW_POWER_LITTLE_MAX_FREQ_KHZ=1200000

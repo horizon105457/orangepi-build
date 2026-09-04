@@ -1,0 +1,6 @@
+# Telemetry agent configuration (RK3588s robot onboard image)
+# Mirrors rpicm5-auto-deploy module 03; platform adapter auto-detects RK3588.
+# Point TELEMETRY_HUB_URL at your telemetry hub; unset disables remote push
+# (local /metrics + /health on 127.0.0.1:9101 stay available).
+TELEMETRY_HUB_URL=http://horizon.local:9100/telemetry
+# TELEMETRY_AUTH=username:password

@@ -1,0 +1,15 @@
+[Unit]
+Description=Apply OPiBot runtime mode
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/sbin/opibot-runtime-mode
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/opibot-runtime-mode apply-config
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,179 @@
+#!/bin/bash
+
+set -euo pipefail
+
+BOOT_PROFILE_CONFIG="/etc/default/opibot-boot-profile"
+SERVICE_LAYOUT_CONFIG="/etc/default/opibot-service-layout"
+DROPIN_ROOT="/run/systemd/system"
+MANAGED_DROPIN="10-opibot-service-layout.conf"
+
+SYSTEM_CPUS="0-3"
+PERCEPTION_CPUS="4-5"
+CONTROL_CPUS="6,7"
+
+CONTROL_ALLOWED_CPUS=""
+PERCEPTION_ALLOWED_CPUS=""
+PLANNING_ALLOWED_CPUS=""
+SUPPORT_ALLOWED_CPUS=""
+
+CONTROL_CPU_WEIGHT=10000
+PERCEPTION_CPU_WEIGHT=7000
+PLANNING_CPU_WEIGHT=6000
+SUPPORT_CPU_WEIGHT=200
+
+CONTROL_SERVICES=""
+PERCEPTION_SERVICES=""
+PLANNING_SERVICES=""
+SUPPORT_SERVICES=""
+
+log() {
+	echo "[opibot-service-layout] $*"
+}
+
+usage() {
+	cat <<'EOF'
+Usage:
+  opibot-service-layout apply-config
+  opibot-service-layout status
+
+Notes:
+  - Service lists are read from /etc/default/opibot-service-layout.
+  - Unit names without a suffix default to .service.
+  - Control services should stay on dedicated RT CPUs; perception and planning
+    services should stay off the control domain by default.
+EOF
+}
+
+require_root() {
+	if [[ ${EUID} -ne 0 ]]; then
+		echo "Run as root"
+		exit 1
+	fi
+}
+
+load_config() {
+	if [[ -f "${BOOT_PROFILE_CONFIG}" ]]; then
+		# shellcheck disable=SC1090
+		source "${BOOT_PROFILE_CONFIG}"
+	fi
+
+	if [[ -f "${SERVICE_LAYOUT_CONFIG}" ]]; then
+		# shellcheck disable=SC1090
+		source "${SERVICE_LAYOUT_CONFIG}"
+	fi
+
+	CONTROL_ALLOWED_CPUS="${CONTROL_ALLOWED_CPUS:-${CONTROL_CPUS}}"
+	PERCEPTION_ALLOWED_CPUS="${PERCEPTION_ALLOWED_CPUS:-${PERCEPTION_CPUS}}"
+	PLANNING_ALLOWED_CPUS="${PLANNING_ALLOWED_CPUS:-${PERCEPTION_CPUS}}"
+	SUPPORT_ALLOWED_CPUS="${SUPPORT_ALLOWED_CPUS:-${SYSTEM_CPUS}}"
+}
+
+normalize_services() {
+	local list="$1"
+	list="${list//,/ }"
+	echo "${list}"
+}
+
+normalize_unit_name() {
+	local unit="$1"
+	if [[ "${unit}" == *.* ]]; then
+		echo "${unit}"
+	else
+		echo "${unit}.service"
+	fi
+}
+
+write_dropin() {
+	local unit="$1"
+	local content="$2"
+	local dropin_dir="${DROPIN_ROOT}/${unit}.d"
+	mkdir -p "${dropin_dir}"
+	printf '%s\n' "${content}" > "${dropin_dir}/${MANAGED_DROPIN}"
+}
+
+clear_managed_dropins() {
+	find "${DROPIN_ROOT}" -maxdepth 3 -type f -name "${MANAGED_DROPIN}" -delete 2>/dev/null || true
+}
+
+render_slice_dropin() {
+	local slice="$1"
+	local allowed_cpus="$2"
+	local cpu_weight="$3"
+	write_dropin "${slice}" "[Slice]
+AllowedCPUs=${allowed_cpus}
+CPUAffinity=${allowed_cpus}
+CPUWeight=${cpu_weight}
+StartupCPUWeight=${cpu_weight}"
+}
+
+render_service_dropin() {
+	local unit="$1"
+	local slice="$2"
+	local allowed_cpus="$3"
+	write_dropin "${unit}" "[Service]
+Slice=${slice}
+CPUAffinity=${allowed_cpus}"
+}
+
+bind_services_to_domain() {
+	local slice="$1"
+	local allowed_cpus="$2"
+	local services="$3"
+	local unit
+	for unit in $(normalize_services "${services}"); do
+		unit="$(normalize_unit_name "${unit}")"
+		render_service_dropin "${unit}" "${slice}" "${allowed_cpus}"
+		log "Bound ${unit} to ${slice} on CPUs ${allowed_cpus}"
+	done
+}
+
+apply_config() {
+	require_root
+	load_config
+	clear_managed_dropins
+
+	render_slice_dropin "opibot-control.slice" "${CONTROL_ALLOWED_CPUS}" "${CONTROL_CPU_WEIGHT}"
+	render_slice_dropin "opibot-perception.slice" "${PERCEPTION_ALLOWED_CPUS}" "${PERCEPTION_CPU_WEIGHT}"
+	render_slice_dropin "opibot-planning.slice" "${PLANNING_ALLOWED_CPUS}" "${PLANNING_CPU_WEIGHT}"
+	render_slice_dropin "opibot-support.slice" "${SUPPORT_ALLOWED_CPUS}" "${SUPPORT_CPU_WEIGHT}"
+
+	bind_services_to_domain "opibot-control.slice" "${CONTROL_ALLOWED_CPUS}" "${CONTROL_SERVICES}"
+	bind_services_to_domain "opibot-perception.slice" "${PERCEPTION_ALLOWED_CPUS}" "${PERCEPTION_SERVICES}"
+	bind_services_to_domain "opibot-planning.slice" "${PLANNING_ALLOWED_CPUS}" "${PLANNING_SERVICES}"
+	bind_services_to_domain "opibot-support.slice" "${SUPPORT_ALLOWED_CPUS}" "${SUPPORT_SERVICES}"
+
+	if command -v systemctl >/dev/null 2>&1; then
+		systemctl daemon-reload
+	fi
+
+	log "Applied service layout policy"
+}
+
+show_status() {
+	load_config
+	printf 'control_allowed_cpus=%s\n' "${CONTROL_ALLOWED_CPUS}"
+	printf 'perception_allowed_cpus=%s\n' "${PERCEPTION_ALLOWED_CPUS}"
+	printf 'planning_allowed_cpus=%s\n' "${PLANNING_ALLOWED_CPUS}"
+	printf 'support_allowed_cpus=%s\n' "${SUPPORT_ALLOWED_CPUS}"
+	printf 'control_services=%s\n' "${CONTROL_SERVICES}"
+	printf 'perception_services=%s\n' "${PERCEPTION_SERVICES}"
+	printf 'planning_services=%s\n' "${PLANNING_SERVICES}"
+	printf 'support_services=%s\n' "${SUPPORT_SERVICES}"
+	find "${DROPIN_ROOT}" -maxdepth 3 -type f -name "${MANAGED_DROPIN}" -print 2>/dev/null | sort || true
+}
+
+case "${1:-status}" in
+	apply-config)
+		apply_config
+		;;
+	status)
+		show_status
+		;;
+	-h|--help|help)
+		usage
+		;;
+	*)
+		usage
+		exit 1
+		;;
+esac

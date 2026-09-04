@@ -1,0 +1,15 @@
+[Unit]
+Description=Automatically switch OPiBot runtime mode
+After=opibot-runtime-mode.service
+Requires=opibot-runtime-mode.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/opibot-runtime-mode watch
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

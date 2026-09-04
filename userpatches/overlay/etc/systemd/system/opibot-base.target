@@ -1,0 +1,4 @@
+[Unit]
+Description=OPiBot base platform target with ROS2 middleware preinstalled
+Wants=opibot-ros2.target opibot-runtime-mode.service opibot-runtime-autoswitch.service opibot-irq-layout.service opibot-service-layout.service
+After=opibot-ros2.target opibot-runtime-mode.service opibot-runtime-autoswitch.service opibot-irq-layout.service opibot-service-layout.service

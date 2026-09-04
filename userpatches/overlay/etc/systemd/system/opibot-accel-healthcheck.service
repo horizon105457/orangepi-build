@@ -1,0 +1,10 @@
+[Unit]
+Description=OPiBot Acceleration Health Check (GPU/NPU)
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/opibot-accel-healthcheck
+
+[Install]
+WantedBy=multi-user.target

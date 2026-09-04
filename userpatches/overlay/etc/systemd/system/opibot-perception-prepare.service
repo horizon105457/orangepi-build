@@ -1,0 +1,14 @@
+[Unit]
+Description=Switch OPiBot to perception-active before perception workloads
+Before=opibot-perception.target
+PartOf=opibot-perception.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/opibot-runtime-mode apply perception-active
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=opibot-perception.target

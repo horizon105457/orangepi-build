@@ -1,0 +1,14 @@
+[Unit]
+Description=Legacy compatibility service for old ROS2-specific high-performance path
+Before=opibot-ros2.target
+PartOf=opibot-ros2.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/opibot-performance-mode apply rt-high-performance
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=opibot-ros2.target
