@@ -1,0 +1,154 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "OPiBot: syntax check customize-image",
+      "type": "shell",
+      "command": "timeout 10s bash -n userpatches/customize-image.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "OPiBot: syntax check runtime scripts",
+      "type": "shell",
+      "command": "timeout 15s bash -n userpatches/overlay/usr/local/sbin/opibot-runtime-mode userpatches/overlay/usr/local/sbin/opibot-performance-mode userpatches/overlay/usr/local/sbin/opibot-irq-layout userpatches/overlay/usr/local/sbin/opibot-boot-profile-sync",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Harness: preflight",
+      "type": "shell",
+      "command": "set -e; printf '[status snapshot]\n'; git status --short --branch; printf '\n[rt heads]\n'; printf 'linux-orangepi-rt '; git -C ../linux-orangepi-rt rev-parse --short HEAD; if [[ -r kernel/orange-pi-6.1-rk35xx-rt/.git/HEAD ]]; then printf 'build-copy '; cut -c1-12 kernel/orange-pi-6.1-rk35xx-rt/.git/HEAD; else echo 'build-copy MISSING'; fi; printf '\n[syntax customize-image]\n'; timeout 10s bash -n userpatches/customize-image.sh; printf '\n[syntax runtime scripts]\n'; timeout 15s bash -n userpatches/overlay/usr/local/sbin/opibot-runtime-mode userpatches/overlay/usr/local/sbin/opibot-performance-mode userpatches/overlay/usr/local/sbin/opibot-irq-layout userpatches/overlay/usr/local/sbin/opibot-boot-profile-sync",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "OPiBot: audit customize-image hotspots",
+      "type": "shell",
+      "command": "timeout 10s rg -n '^([A-Za-z0-9_]+)\\(\\)' userpatches/customize-image.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "OPiBot: show hpw commits",
+      "type": "shell",
+      "command": "timeout 10s git log --format='%h %ad %s' --date=short --author='^hpw$' -n 20",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dual repo: status snapshot",
+      "type": "shell",
+      "command": "set -e; printf '[orangepi-build]\n'; git status --short --branch; printf '\n[linux-orangepi-rt]\n'; git -C ../linux-orangepi-rt status --short --branch",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "OPiBot: audit runtime chain",
+      "type": "shell",
+      "command": "timeout 15s rg -n 'LEGACY|RUNTIME_RT_TUNE|ACTIVE_TARGET|BOOT_PROFILE|apply-config|watch|runtime-rt-tune|opibot-performance-mode' userpatches/overlay/usr/local/sbin/opibot-runtime-mode userpatches/overlay/usr/local/sbin/opibot-performance-mode userpatches/overlay/usr/local/sbin/opibot-irq-layout userpatches/overlay/usr/local/sbin/opibot-boot-profile-sync userpatches/overlay/etc/systemd/system/opibot-runtime-mode.service userpatches/overlay/etc/systemd/system/opibot-runtime-autoswitch.service userpatches/overlay/etc/systemd/system/opibot-irq-layout.service",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Harness: gate-b audit pack",
+      "type": "shell",
+      "command": "set -e; printf '[customize-image hotspots]\n'; timeout 10s rg -n '^([A-Za-z0-9_]+)\\(\\)' userpatches/customize-image.sh; printf '\n[runtime chain]\n'; timeout 15s rg -n 'LEGACY|RUNTIME_RT_TUNE|ACTIVE_TARGET|BOOT_PROFILE|apply-config|watch|runtime-rt-tune|opibot-performance-mode' userpatches/overlay/usr/local/sbin/opibot-runtime-mode userpatches/overlay/usr/local/sbin/opibot-performance-mode userpatches/overlay/usr/local/sbin/opibot-irq-layout userpatches/overlay/usr/local/sbin/opibot-boot-profile-sync userpatches/overlay/etc/systemd/system/opibot-runtime-mode.service userpatches/overlay/etc/systemd/system/opibot-runtime-autoswitch.service userpatches/overlay/etc/systemd/system/opibot-irq-layout.service",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Harness: runtime issue snapshot",
+      "type": "shell",
+      "command": "set -e; printf '[mode mapping]\n'; timeout 10s rg -n 'control-active|perception-active|standby|rt-high-performance|low-power' userpatches/overlay/usr/local/sbin/opibot-runtime-mode userpatches/overlay/usr/local/sbin/opibot-performance-mode userpatches/overlay/etc/default/opibot-runtime-mode userpatches/overlay/etc/default/opibot-performance-mode userpatches/overlay/etc/default/opibot-boot-profile; printf '\n[boot arg writers]\n'; timeout 10s rg -n 'extraargs=|orangepiEnv.txt|nohz_full|rcu_nocbs|isolcpus|irqaffinity' userpatches/customize-image.sh userpatches/overlay/usr/local/sbin/opibot-boot-profile-sync; printf '\n[cpu list parsers]\n'; timeout 10s rg -n 'cpulist_to_mask|expand_cpulist|cpu list|tr ' userpatches/overlay/usr/local/sbin/opibot-performance-mode userpatches/overlay/usr/local/sbin/runtime-rt-tune",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RT kernel: show hpw commits",
+      "type": "shell",
+      "command": "timeout 10s git -C ../linux-orangepi-rt log --format='%h %ad %s' --date=short --author='^hpw$' -n 20",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dual repo: compare RT heads",
+      "type": "shell",
+      "command": "set -e; printf 'linux-orangepi-rt '; git -C ../linux-orangepi-rt rev-parse --short HEAD; if [[ -r kernel/orange-pi-6.1-rk35xx-rt/.git/HEAD ]]; then printf 'build-copy '; cut -c1-12 kernel/orange-pi-6.1-rk35xx-rt/.git/HEAD; else echo 'build-copy MISSING'; fi",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": [
+            "-lc"
+          ]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "OPiBot: build image (timeout)",
+      "type": "shell",
+      "command": "timeout --signal=INT 6h sudo ./build.sh opibot",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "OPiBot: build kernel only (timeout)",
+      "type": "shell",
+      "command": "timeout --signal=INT 3h sudo ./build.sh opibot BUILD_OPT=kernel",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "build"
+    }
+  ]
+}
