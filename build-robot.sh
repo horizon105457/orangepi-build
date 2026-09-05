@@ -33,5 +33,8 @@ echo "=============================================="
 cd "${SELF_DIR}"
 # Allocate a PTY for build.sh so pv/apt and the official Armbian output path
 # retain their normal terminal behavior while tee records the same stream.
-BUILD_COMMAND="$(printf '%q ' sudo ./build.sh "${CONFIG}" "BUILD_OPT=${OPT}")"
+# sudo normally drops proxy variables; preserve only the standard proxy names
+# so git/curl/wget in the root build see the caller's configured proxy.
+SUDO_PROXY_ENV='--preserve-env=HTTP_PROXY,HTTPS_PROXY,NO_PROXY,http_proxy,https_proxy,no_proxy,ALL_PROXY,all_proxy'
+BUILD_COMMAND="$(printf '%q ' sudo "${SUDO_PROXY_ENV}" ./build.sh "${CONFIG}" "BUILD_OPT=${OPT}")"
 exec script -qefc "${BUILD_COMMAND% }" /dev/null | tee "${LOG}"
